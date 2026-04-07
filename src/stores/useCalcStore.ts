@@ -27,6 +27,6 @@ export const useCalcStore = create<CalcState>()(
           state.setText(state.text);
         }
       },
-    }
-  )
+    },
+  ),
 );

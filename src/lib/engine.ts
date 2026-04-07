@@ -17,13 +17,18 @@ export function evaluateLines(lines: string[]): LineResult[] {
   const scope: Record<string, unknown> = {};
   const results: LineResult[] = [];
   let prevValue: number | null = null;
-  let numericValues: number[] = [];
+  const numericValues: number[] = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
 
     if (!trimmed || COMMENT_RE.test(trimmed)) {
-      results.push({ value: null, display: "", error: null, isAssignment: false });
+      results.push({
+        value: null,
+        display: "",
+        error: null,
+        isAssignment: false,
+      });
       continue;
     }
 
@@ -33,7 +38,7 @@ export function evaluateLines(lines: string[]): LineResult[] {
     }
     if (numericValues.length > 0) {
       scope.sum = numericValues.reduce((a, b) => a + b, 0);
-      scope.average = scope.sum as number / numericValues.length;
+      scope.average = (scope.sum as number) / numericValues.length;
     }
 
     const isAssignment = ASSIGNMENT_RE.test(trimmed);
@@ -51,7 +56,11 @@ export function evaluateLines(lines: string[]): LineResult[] {
           error: null,
           isAssignment,
         });
-      } else if (typeof result === "object" && result !== null && "toNumber" in result) {
+      } else if (
+        typeof result === "object" &&
+        result !== null &&
+        "toNumber" in result
+      ) {
         const num = Number(result);
         prevValue = num;
         numericValues.push(num);
@@ -70,7 +79,12 @@ export function evaluateLines(lines: string[]): LineResult[] {
         });
       }
     } catch {
-      results.push({ value: null, display: "", error: null, isAssignment: false });
+      results.push({
+        value: null,
+        display: "",
+        error: null,
+        isAssignment: false,
+      });
     }
   }
 
