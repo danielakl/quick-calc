@@ -1,17 +1,23 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useState } from "react";
-import { useCalcStore } from "@/stores/useCalcStore";
+import { useRef, useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCalcStore, initFromURL } from "@/stores/useCalcStore";
 import ResultLine from "./ResultLine";
+
+const emptySubscribe = () => () => {};
 
 export default function Calculator() {
   const { text, results, setText } = useCalcStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 
   useEffect(() => {
-    setHydrated(true);
+    initFromURL();
   }, []);
 
   const handleScroll = useCallback(() => {
