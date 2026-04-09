@@ -1,3 +1,21 @@
-onlyBuiltDependencies:
-  - sharp
-  - unrs-resolver
+# Explicit allowlist for packages that may run lifecycle scripts (native binaries)
+# sharp: used by next for image optimization
+# unrs-resolver: used by eslint-import-resolver-typescript
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+
+# Fail install if unapproved packages try to run lifecycle scripts
+strictDepBuilds: true
+
+# Require packages to be at least 3 days old before installing
+# Gives security researchers time to flag malicious releases
+minimumReleaseAge: 4320
+
+# Block transitive deps from using git/tarball/link sources
+# Only direct deps may use non-registry sources
+blockExoticSubdeps: true
+
+# Prevent installing packages whose trust level has decreased
+# (e.g. previously signed via Trusted Publisher, now unsigned)
+trustPolicy: no-downgrade
