@@ -9,6 +9,7 @@ A notepad-style calculator that runs entirely in your browser. Type math express
 - **Built-in helpers** — `prev` (previous result), `sum` (running total), `average` (running average)
 - **Comments** — lines starting with `//` or `#` are ignored
 - **Shareable URLs** — your entire notepad is compressed into the URL so you can share or bookmark calculations
+- **Dark/light theme** — toggle in the header, respects system preference, persists to localStorage
 - **Runs client-side** — nothing is sent to a server; all math happens in your browser
 
 ## Getting started
@@ -42,7 +43,8 @@ pnpm format:check   # Check formatting without writing
 
 - [Next.js](https://nextjs.org/) 16 (App Router)
 - [React](https://react.dev/) 19
-- [Tailwind CSS](https://tailwindcss.com/) 4
+- [Tailwind CSS](https://tailwindcss.com/) 4 with locked-down design tokens (see [`DESIGN.md`](DESIGN.md))
+- [Inter](https://rsms.me/inter/) (UI) + [JetBrains Mono](https://www.jetbrains.com/lp/mono/) (calculator) fonts
 - [mathjs](https://mathjs.org/) for expression parsing and evaluation
 - [Zustand](https://zustand.docs.pmnd.rs/) for state management
 - [lz-string](https://pieroxy.net/blog/pages/lz-string/index.html) for URL compression
@@ -51,10 +53,13 @@ pnpm format:check   # Check formatting without writing
 
 ```
 src/
-  app/              Layout, page entry point, global styles
-  components/       Calculator (main UI), ResultLine (single result row)
-  lib/              engine (mathjs evaluation logic), formatter (number display)
-  stores/           Zustand store with URL sync
+  app/               Layout, page entry point, global styles, favicon (icon.svg)
+  components/        Calculator (main UI), ResultLine, ThemeToggle
+  components/icons/  SVG icon components (Logo, SunIcon, MoonIcon)
+  lib/               engine (mathjs evaluation logic), formatter (number display)
+  stores/            Zustand stores (calc state + URL sync, theme)
+public/              Static assets (theme-init.js)
+e2e/                 Playwright E2E tests
 ```
 
 ## License
