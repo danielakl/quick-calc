@@ -1,18 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Calculator E2E", () => {
-  test("loads the app and shows header", async ({ page }) => {
+  test("loads the app and shows input", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h1")).toHaveText("Quick Calc");
-    await expect(
-      page.locator('textarea[placeholder="Type an expression..."]'),
-    ).toBeVisible();
+    await expect(page.getByTestId("calc-input")).toBeVisible();
   });
 
   test("evaluates expressions and shows results", async ({ page }) => {
     await page.goto("/");
-    const textarea = page.locator("textarea");
-    const results = page.locator(".w-\\[40\\%\\]");
+    const textarea = page.getByTestId("calc-input");
+    const results = page.getByTestId("calc-results");
 
     await textarea.fill("2 + 3\n10 * 4\nsqrt(144)");
 
@@ -23,8 +20,8 @@ test.describe("Calculator E2E", () => {
 
   test("supports variables and builtins", async ({ page }) => {
     await page.goto("/");
-    const textarea = page.locator("textarea");
-    const results = page.locator(".w-\\[40\\%\\]");
+    const textarea = page.getByTestId("calc-input");
+    const results = page.getByTestId("calc-results");
 
     await textarea.fill("price = 100\ntax = 0.2\nprice * tax\nsum");
 
@@ -36,8 +33,8 @@ test.describe("Calculator E2E", () => {
 
   test("shares state via URL", async ({ page }) => {
     await page.goto("/");
-    const textarea = page.locator("textarea");
-    const results = page.locator(".w-\\[40\\%\\]");
+    const textarea = page.getByTestId("calc-input");
+    const results = page.getByTestId("calc-results");
 
     await textarea.fill("42 + 8");
     await expect(results.getByText("50")).toBeVisible();
@@ -47,7 +44,7 @@ test.describe("Calculator E2E", () => {
 
     // Navigate to the same URL to verify state loads from URL
     await page.goto(url);
-    await expect(page.locator("textarea")).toHaveValue("42 + 8");
+    await expect(page.getByTestId("calc-input")).toHaveValue("42 + 8");
     await expect(results.getByText("50")).toBeVisible();
   });
 });

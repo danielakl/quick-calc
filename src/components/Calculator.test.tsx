@@ -11,22 +11,22 @@ beforeEach(() => {
 });
 
 describe("Calculator", () => {
-  it("renders the header", () => {
+  it("renders the header with theme toggle", () => {
     render(<Calculator />);
-    expect(screen.getAllByText("Quick Calc").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("theme-toggle")).toBeInTheDocument();
   });
 
   it("renders a textarea with placeholder", () => {
     render(<Calculator />);
-    const textareas = screen.getAllByPlaceholderText("Type an expression...");
-    expect(textareas.length).toBeGreaterThan(0);
-    expect(textareas[0]).toHaveValue("");
+    const textarea = screen.getByTestId("calc-input");
+    expect(textarea).toHaveValue("");
+    expect(textarea).toHaveAttribute("placeholder", "Type an expression...");
   });
 
   it("evaluates expressions as user types", async () => {
     const user = userEvent.setup();
     render(<Calculator />);
-    const textarea = screen.getAllByPlaceholderText("Type an expression...")[0];
+    const textarea = screen.getByTestId("calc-input");
 
     await user.type(textarea, "2 + 3");
     expect(screen.getAllByText("5").length).toBeGreaterThan(0);
