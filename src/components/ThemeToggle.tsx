@@ -1,8 +1,8 @@
 "use client";
 
 import { useThemeStore } from "@/stores/useThemeStore";
-import SunIcon from "./icons/SunIcon";
 import MoonIcon from "./icons/MoonIcon";
+import SunIcon from "./icons/SunIcon";
 
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useThemeStore();

@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import ResultLine from "./ResultLine";
+import { describe, it, expect } from "vitest";
 import { LineResult } from "@/lib/engine";
+import ResultLine from "./ResultLine";
 
 function makeResult(overrides: Partial<LineResult> = {}): LineResult {
   return {

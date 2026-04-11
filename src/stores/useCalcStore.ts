@@ -1,8 +1,8 @@
-import { create } from "zustand";
 import {
   compressToEncodedURIComponent,
   decompressFromEncodedURIComponent,
 } from "lz-string";
+import { create } from "zustand";
 import { evaluateLines, LineResult } from "@/lib/engine";
 
 interface CalcState {

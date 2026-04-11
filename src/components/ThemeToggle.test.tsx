@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ThemeToggle from "./ThemeToggle";
+import { describe, it, expect, beforeEach } from "vitest";
 import { useThemeStore } from "@/stores/useThemeStore";
+import ThemeToggle from "./ThemeToggle";
 
 beforeEach(() => {
   cleanup();

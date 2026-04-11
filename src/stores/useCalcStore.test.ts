@@ -1,6 +1,6 @@
+import { compressToEncodedURIComponent } from "lz-string";
 import { describe, it, expect, beforeEach } from "vitest";
 import { useCalcStore, initFromURL } from "./useCalcStore";
-import { compressToEncodedURIComponent } from "lz-string";
 
 beforeEach(() => {
   useCalcStore.setState({ text: "", results: [] });

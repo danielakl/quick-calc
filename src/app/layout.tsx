@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
-import Script from "next/script";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
+import type { Metadata } from "next";
 import "./globals.css";
 
 const inter = Inter({
