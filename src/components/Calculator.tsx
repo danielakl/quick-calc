@@ -23,9 +23,15 @@ export default function Calculator() {
     initFromURL();
   }, []);
 
-  const handleScroll = useCallback(() => {
+  const handleInputScroll = useCallback(() => {
     if (textareaRef.current && resultsRef.current) {
       resultsRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  }, []);
+
+  const handleResultsScroll = useCallback(() => {
+    if (resultsRef.current && textareaRef.current) {
+      textareaRef.current.scrollTop = resultsRef.current.scrollTop;
     }
   }, []);
 
@@ -49,41 +55,40 @@ export default function Calculator() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background font-sans">
-      <header className="flex items-center justify-end px-6 py-3">
+    <div className="relative flex h-screen bg-background font-sans">
+      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-end bg-background/30 px-6 py-3 backdrop-blur-xs">
         <ThemeToggle />
       </header>
-      <div className="flex min-h-0 flex-1">
-        {/* Input area */}
-        <div className="relative w-[60%]">
-          <textarea
-            id="calc-input"
-            data-testid="calc-input"
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onScroll={handleScroll}
-            className="absolute inset-0 h-full w-full p-6 font-mono text-sm leading-[1.5rem] text-foreground"
-            placeholder="Type an expression..."
-            spellCheck={false}
-            autoFocus
-          />
-        </div>
 
-        {/* Divider */}
-        <div className="w-px bg-border" />
+      {/* Input area */}
+      <div className="relative w-[60%]">
+        <textarea
+          id="calc-input"
+          data-testid="calc-input"
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onScroll={handleInputScroll}
+          className="hide-scrollbar absolute inset-0 h-full w-full overflow-y-scroll px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-sm leading-6 text-foreground"
+          placeholder="Type an expression..."
+          spellCheck={false}
+          autoFocus
+        />
+      </div>
 
-        {/* Results area */}
-        <div
-          ref={resultsRef}
-          data-testid="calc-results"
-          className="w-[40%] overflow-y-auto p-6 font-mono text-sm leading-[1.5rem]"
-          onScroll={() => {}}
-        >
-          {paddedResults.map((result, i) => (
-            <ResultLine key={i} result={result} />
-          ))}
-        </div>
+      {/* Divider */}
+      <div className="w-px bg-border" />
+
+      {/* Results area */}
+      <div
+        ref={resultsRef}
+        data-testid="calc-results"
+        className="w-[40%] overflow-y-auto px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-sm leading-6"
+        onScroll={handleResultsScroll}
+      >
+        {paddedResults.map((result, i) => (
+          <ResultLine key={i} result={result} />
+        ))}
       </div>
     </div>
   );

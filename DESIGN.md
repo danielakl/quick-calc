@@ -89,7 +89,7 @@ Use these sizes consistently. Do not introduce arbitrary pixel values.
 | `lg`   | 18px | 28px        | 500    | Section headings, prominent labels         |
 | `xl`   | 20px | 28px        | 600    | Page titles                                |
 
-**Calculator area exception:** The textarea and result lines use `text-sm` (14px) with a fixed `leading-[1.5rem]` (24px) line height so input and output lines stay vertically aligned. Do not change this ratio without updating both sides.
+**Calculator area exception:** The textarea and result lines use `text-sm` (14px) with a fixed `leading-6` (24px) line height so input and output lines stay vertically aligned. Do not change this ratio without updating both sides.
 
 ### Font Weights
 
@@ -186,7 +186,7 @@ The core layout is a horizontal split:
 - **Results area:** `40%` width
 - **Divider:** `1px` (`w-px bg-border`)
 
-Both sides share identical vertical padding (`p-6`) and line height (`leading-[1.5rem]`) to keep lines aligned.
+Both sides share identical vertical padding (`p-6`) and line height (`leading-6`) to keep lines aligned.
 
 ### Responsive Considerations
 

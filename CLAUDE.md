@@ -29,7 +29,8 @@ e2e/               # Playwright E2E tests
 ```sh
 pnpm dev          # Start dev server
 pnpm build        # Production build
-pnpm lint         # ESLint
+pnpm lint         # ESLint (--max-warnings 0)
+pnpm lint:fix     # ESLint with auto-fix
 pnpm typecheck    # tsc --noEmit
 pnpm test         # Vitest unit/component tests
 pnpm test:unit    # Vitest unit/component tests (alias)

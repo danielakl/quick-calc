@@ -83,6 +83,14 @@ textarea {
   caret-color: var(--color-caret);
 }
 
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 textarea::selection {
   background: var(--color-selection);
 }
