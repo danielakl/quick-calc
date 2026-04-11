@@ -3,6 +3,7 @@
 import { useRef, useCallback, useEffect, useSyncExternalStore } from "react";
 import { useCalcStore, initFromURL } from "@/stores/useCalcStore";
 import { initTheme } from "@/stores/useThemeStore";
+import HelpModal from "./HelpModal";
 import ResultLine from "./ResultLine";
 import ThemeToggle from "./ThemeToggle";
 
@@ -57,6 +58,7 @@ export default function Calculator() {
   return (
     <div className="relative flex h-screen bg-background font-sans">
       <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-end bg-background/30 px-6 py-3 backdrop-blur-xs">
+        <HelpModal />
         <ThemeToggle />
       </header>
 
