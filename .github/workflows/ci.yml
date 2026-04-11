@@ -4,21 +4,22 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - "**.md"
-      - "LICENSE"
-      - ".vscode/**"
-      - ".prettierignore"
       - ".gitignore"
       - ".husky/**"
+      - ".prettierignore"
+      - ".vscode/**"
+      - "**.md"
+      - "LICENSE"
   pull_request:
     branches: [main]
     paths-ignore:
-      - "**.md"
-      - "LICENSE"
-      - ".vscode/**"
-      - ".prettierignore"
       - ".gitignore"
       - ".husky/**"
+      - ".prettierignore"
+      - ".snyk"
+      - ".vscode/**"
+      - "**.md"
+      - "LICENSE"
 
 jobs:
   build:
@@ -39,6 +40,25 @@ jobs:
       - name: Audit dependencies
         run: pnpm audit --audit-level=high
 
+      # Snyk Open Source (SCA) — complements pnpm audit with Snyk's curated vuln DB
+      - name: Snyk Open Source scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+
+      # Snyk Code (SAST) — scans src/ for code-level vulnerabilities
+      - name: Snyk Code scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: code test
+          args: --severity-threshold=high
+
       - name: Lint
         run: pnpm run lint
 
@@ -47,6 +67,21 @@ jobs:
 
       - name: Unit tests
         run: pnpm run test:coverage
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/coverage-final.json
+          fail_ci_if_error: false
+
+      - name: Coverage summary
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: coverage/coverage-summary.json
+          json-final-path: coverage/coverage-final.json
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
