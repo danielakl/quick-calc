@@ -5,16 +5,28 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
 
-# Fail install if unapproved packages try to run lifecycle scripts
-strictDepBuilds: true
+# Block transitive deps from using git/tarball/link sources
+# Only direct deps may use non-registry sources
+blockExoticSubdeps: true
 
 # Require packages to be at least 3 days old before installing
 # Gives security researchers time to flag malicious releases
 minimumReleaseAge: 4320
 
-# Block transitive deps from using git/tarball/link sources
-# Only direct deps may use non-registry sources
-blockExoticSubdeps: true
+minimumReleaseAgeExclude:
+  - "@next/env@16.2.3"
+  - "@next/swc-darwin-arm64@16.2.3"
+  - "@next/swc-darwin-x64@16.2.3"
+  - "@next/swc-linux-arm64-gnu@16.2.3"
+  - "@next/swc-linux-arm64-musl@16.2.3"
+  - "@next/swc-linux-x64-gnu@16.2.3"
+  - "@next/swc-linux-x64-musl@16.2.3"
+  - "@next/swc-win32-arm64-msvc@16.2.3"
+  - "@next/swc-win32-x64-msvc@16.2.3"
+  - "next@16.2.3"
+
+# Fail install if unapproved packages try to run lifecycle scripts
+strictDepBuilds: true
 
 # Prevent installing packages whose trust level has decreased
 # (e.g. previously signed via Trusted Publisher, now unsigned)
