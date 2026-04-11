@@ -24,15 +24,12 @@ export default function Calculator() {
     initFromURL();
   }, []);
 
-  const handleInputScroll = useCallback(() => {
-    if (textareaRef.current && resultsRef.current) {
-      resultsRef.current.scrollTop = textareaRef.current.scrollTop;
-    }
-  }, []);
-
-  const handleResultsScroll = useCallback(() => {
-    if (resultsRef.current && textareaRef.current) {
-      textareaRef.current.scrollTop = resultsRef.current.scrollTop;
+  const handleScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const source = e.currentTarget;
+    const target =
+      source === textareaRef.current ? resultsRef.current : textareaRef.current;
+    if (target) {
+      target.scrollTop = source.scrollTop;
     }
   }, []);
 
@@ -70,7 +67,7 @@ export default function Calculator() {
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onScroll={handleInputScroll}
+          onScroll={handleScroll}
           className="hide-scrollbar absolute inset-0 h-full w-full overflow-y-scroll px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-sm leading-6 text-foreground"
           placeholder="Type an expression..."
           spellCheck={false}
@@ -86,7 +83,7 @@ export default function Calculator() {
         ref={resultsRef}
         data-testid="calc-results"
         className="w-[40%] overflow-y-auto px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-sm leading-6"
-        onScroll={handleResultsScroll}
+        onScroll={handleScroll}
       >
         {paddedResults.map((result, i) => (
           <ResultLine key={i} result={result} />
