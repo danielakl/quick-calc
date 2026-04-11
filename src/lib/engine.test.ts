@@ -136,6 +136,25 @@ describe("evaluateLines", () => {
       const results = evaluateLines(["pi"]);
       expect(results[0].value).toBeCloseTo(Math.PI);
     });
+
+    it("shows error for bare function name", () => {
+      const results = evaluateLines(["log"]);
+      expect(results[0].value).toBe(null);
+      expect(results[0].error).toBe("log requires 1 argument");
+      expect(results[0].display).toBe("");
+    });
+
+    it("shows error with correct arg count for multi-arg functions", () => {
+      const results = evaluateLines(["pow"]);
+      expect(results[0].value).toBe(null);
+      expect(results[0].error).toBe("pow requires 2 arguments");
+    });
+
+    it("does not break subsequent lines after bare function name", () => {
+      const results = evaluateLines(["sin", "2 + 2"]);
+      expect(results[0].error).toBe("sin requires 1 argument");
+      expect(results[1].value).toBe(4);
+    });
   });
 
   describe("display formatting", () => {

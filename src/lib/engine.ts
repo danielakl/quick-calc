@@ -70,6 +70,23 @@ export function evaluateLines(lines: string[]): LineResult[] {
           error: null,
           isAssignment,
         });
+      } else if (typeof result === "function") {
+        const name = result.name || "Function";
+        const sigs = result.signatures;
+        let minArgs = 1;
+        if (sigs && typeof sigs === "object") {
+          minArgs = Math.min(
+            ...Object.keys(sigs).map((k) =>
+              k === "" ? 0 : k.split(",").length,
+            ),
+          );
+        }
+        results.push({
+          value: null,
+          display: "",
+          error: `${name} requires ${minArgs} ${minArgs === 1 ? "argument" : "arguments"}`,
+          isAssignment: false,
+        });
       } else {
         results.push({
           value: null,

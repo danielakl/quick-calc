@@ -33,6 +33,15 @@ describe("ResultLine", () => {
     expect(div.className).not.toContain("text-accent-dim");
   });
 
+  it("displays error message with error styling", () => {
+    const { container } = render(
+      <ResultLine result={makeResult({ error: "log requires 1 argument" })} />,
+    );
+    expect(screen.getByText("log requires 1 argument")).toBeInTheDocument();
+    const div = container.firstElementChild!;
+    expect(div.className).toContain("text-error");
+  });
+
   it("applies accent-dim class for assignment results", () => {
     const { container } = render(
       <ResultLine
