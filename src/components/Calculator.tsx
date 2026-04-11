@@ -68,8 +68,9 @@ export default function Calculator() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onScroll={handleScroll}
-          className="hide-scrollbar absolute inset-0 h-full w-full overflow-y-scroll px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-sm leading-6 text-foreground"
+          className="hide-scrollbar absolute inset-0 h-full w-full overflow-y-scroll bg-transparent px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-sm leading-6 text-foreground caret-caret selection:bg-selection transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
           placeholder="Type an expression..."
+          aria-label="Calculator input"
           spellCheck={false}
           autoFocus
         />

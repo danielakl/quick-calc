@@ -40,6 +40,12 @@ describe("Calculator", () => {
     expect(screen.getAllByText("30").length).toBeGreaterThan(0);
   });
 
+  it("textarea has an accessible label", () => {
+    render(<Calculator />);
+    const textarea = screen.getByTestId("calc-input");
+    expect(textarea).toHaveAttribute("aria-label", "Calculator input");
+  });
+
   it("re-renders when store text changes", async () => {
     render(<Calculator />);
     useCalcStore.getState().setText("7 * 8");
