@@ -33,7 +33,8 @@ Open [http://localhost:3000](http://localhost:3000).
 ```sh
 pnpm build          # Production build
 pnpm start          # Serve production build
-pnpm lint           # Run ESLint
+pnpm lint           # Run ESLint (fails on warnings)
+pnpm lint:fix       # Run ESLint with auto-fix
 pnpm typecheck      # Run TypeScript type checking
 pnpm format         # Format code with Prettier
 pnpm format:check   # Check formatting without writing
