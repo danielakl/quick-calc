@@ -1,5 +1,7 @@
 # Quick Calc
 
+[![codecov](https://codecov.io/gh/danielakl/quick-calc/graph/badge.svg)](https://codecov.io/gh/danielakl/quick-calc)
+
 A notepad-style calculator that runs entirely in your browser. Type math expressions — one per line — and see results instantly in a side panel. Supports variables, running totals, and shareable links.
 
 ## Features
