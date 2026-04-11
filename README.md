@@ -65,4 +65,4 @@ e2e/                 Playwright E2E tests
 
 ## License
 
-This project is not currently licensed for redistribution. All rights reserved.
+MIT — see [LICENSE](LICENSE) for details.
