@@ -47,7 +47,6 @@ jobs:
       # Snyk Open Source (SCA) — complements pnpm audit with Snyk's curated vuln DB
       - name: Snyk Open Source scan
         uses: snyk/actions/node@master
-        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -56,7 +55,6 @@ jobs:
       # Snyk Code (SAST) — scans src/ for code-level vulnerabilities
       - name: Snyk Code scan
         uses: snyk/actions/node@master
-        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
