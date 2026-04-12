@@ -12,84 +12,67 @@ on:
       - ".vscode/**"
       - "**.md"
       - "LICENSE"
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - ".editorconfig"
-      - ".gitattributes"
-      - ".gitignore"
-      - ".husky/**"
-      - ".prettierignore"
-      - ".snyk"
-      - ".vscode/**"
-      - "**.md"
-      - "LICENSE"
 
 jobs:
   build:
+    uses: ./.github/workflows/build.yml
+    with:
+      upload-artifact: true
+    secrets: inherit
+
+  deploy-dev:
+    name: Deploy to dev
+    needs: build
     runs-on: ubuntu-latest
+    environment: development
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: out/
+
+      - name: Deploy to Cloudflare Pages (dev)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy out --project-name=quick-calc --branch=dev
+
+  deploy-prod:
+    name: Deploy to production
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+      deployments: write
     steps:
       - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v5
-
-      - uses: actions/setup-node@v6
         with:
-          node-version-file: ".node-version"
-          cache: "pnpm"
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: out/
 
-      - name: Audit dependencies
-        run: pnpm audit --audit-level=high
+      - name: Deploy to Cloudflare Pages (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy out --project-name=quick-calc --branch=main
 
-      # Snyk Open Source (SCA) — complements pnpm audit with Snyk's curated vuln DB
-      - name: Snyk Open Source scan
-        uses: snyk/actions/node@master
+      - name: Tag and release
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high --all-projects
-
-      # Snyk Code (SAST) — scans src/ for code-level vulnerabilities
-      - name: Snyk Code scan
-        uses: snyk/actions/node@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: code test
-          args: --severity-threshold=high
-
-      - name: Lint
-        run: pnpm run lint
-
-      - name: Typecheck
-        run: pnpm run typecheck
-
-      - name: Unit tests
-        run: pnpm run test:coverage
-
-      - name: Upload coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage/coverage-final.json
-          fail_ci_if_error: false
-
-      - name: Coverage summary
-        if: always()
-        uses: davelosert/vitest-coverage-report-action@v2
-        with:
-          json-summary-path: coverage/coverage-summary.json
-          json-final-path: coverage/coverage-final.json
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium --with-deps
-
-      - name: E2E tests
-        run: pnpm run test:e2e
-
-      - name: Build
-        run: pnpm run build
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="deploy-$(date -u +%Y%m%d-%H%M%S)"
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" --title "$TAG" --generate-notes

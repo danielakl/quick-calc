@@ -1,0 +1,20 @@
+name: PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - ".editorconfig"
+      - ".gitattributes"
+      - ".gitignore"
+      - ".husky/**"
+      - ".prettierignore"
+      - ".snyk"
+      - ".vscode/**"
+      - "**.md"
+      - "LICENSE"
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit

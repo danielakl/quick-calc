@@ -1,0 +1,86 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifact:
+        description: "Upload build output as artifact for downstream jobs"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: ".node-version"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+
+      # Snyk Open Source (SCA) — complements pnpm audit with Snyk's curated vuln DB
+      - name: Snyk Open Source scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+
+      # Snyk Code (SAST) — scans src/ for code-level vulnerabilities
+      - name: Snyk Code scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: code test
+          args: --severity-threshold=high
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Unit tests
+        run: pnpm run test:coverage
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/coverage-final.json
+          fail_ci_if_error: false
+
+      - name: Coverage summary
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: coverage/coverage-summary.json
+          json-final-path: coverage/coverage-final.json
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: E2E tests
+        run: pnpm run test:e2e
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Upload build artifact
+        if: inputs.upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: out/
+          retention-days: 1
