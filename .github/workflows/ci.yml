@@ -24,7 +24,7 @@ jobs:
     name: Deploy to dev
     needs: build
     runs-on: ubuntu-latest
-    environment: development
+    environment: Development
     permissions:
       contents: read
       deployments: write
@@ -46,7 +46,7 @@ jobs:
     name: Deploy to production
     needs: deploy-dev
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production
     permissions:
       contents: write
       deployments: write
