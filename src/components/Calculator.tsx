@@ -59,7 +59,7 @@ export default function Calculator() {
         <ThemeToggle />
       </header>
 
-      {/* Input area test */}
+      {/* Input area */}
       <div className="relative w-[60%]">
         <textarea
           id="calc-input"
