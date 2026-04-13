@@ -1,4 +1,4 @@
-import { create, all } from "mathjs";
+import { create, all, isSymbolNode, type SymbolNode } from "mathjs";
 import { formatNumber } from "./formatter";
 
 const math = create(all, {});
@@ -12,6 +12,8 @@ export interface LineResult {
 
 const ASSIGNMENT_RE = /^\s*([a-zA-Z_]\w*)\s*=/;
 const COMMENT_RE = /^\s*(\/\/|#)/;
+const BUILTIN_VARS = new Set(["prev", "sum", "average"]);
+const mathNamespace = math as unknown as Record<string, unknown>;
 
 export function evaluateLines(lines: string[]): LineResult[] {
   const scope: Record<string, unknown> = {};
@@ -43,8 +45,36 @@ export function evaluateLines(lines: string[]): LineResult[] {
 
     const isAssignment = ASSIGNMENT_RE.test(trimmed);
 
+    // Block assignment to built-in functions (e.g. sqrt = 5)
+    if (isAssignment) {
+      const match = trimmed.match(ASSIGNMENT_RE);
+      if (match && typeof mathNamespace[match[1]] === "function") {
+        results.push({
+          value: null,
+          display: "",
+          error: `Cannot assign to built-in function "${match[1]}"`,
+          isAssignment: false,
+        });
+        continue;
+      }
+    }
+
     try {
       const node = math.parse(trimmed);
+
+      // Default undefined variables to 1
+      for (const n of node.filter(isSymbolNode)) {
+        const sym = n as SymbolNode;
+        const name = sym.name;
+        if (
+          !(name in scope) &&
+          !(name in mathNamespace) &&
+          !BUILTIN_VARS.has(name)
+        ) {
+          scope[name] = 1;
+        }
+      }
+
       const result = node.evaluate(scope);
 
       if (typeof result === "number") {

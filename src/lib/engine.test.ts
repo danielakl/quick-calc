@@ -107,16 +107,98 @@ describe("evaluateLines", () => {
     });
   });
 
+  describe("undefined variables default to 1", () => {
+    it("bare name evaluates to 1", () => {
+      const results = evaluateLines(["Alice"]);
+      expect(results[0].value).toBe(1);
+    });
+
+    it("multiple names each evaluate to 1", () => {
+      const results = evaluateLines(["Alice", "Bob", "Charlie"]);
+      expect(values(results)).toEqual([1, 1, 1]);
+    });
+
+    it("names followed by sum give guest count", () => {
+      const results = evaluateLines(["Alice", "Bob", "Charlie", "sum"]);
+      expect(results[3].value).toBe(3);
+    });
+
+    it("undefined variables in expressions default to 1", () => {
+      const results = evaluateLines(["guests + 5"]);
+      expect(results[0].value).toBe(6);
+    });
+
+    it("does not override explicitly assigned variables", () => {
+      const results = evaluateLines(["x = 10", "x"]);
+      expect(values(results)).toEqual([10, 10]);
+    });
+
+    it("does not override built-in constants", () => {
+      const results = evaluateLines(["pi"]);
+      expect(results[0].value).toBeCloseTo(Math.PI);
+    });
+
+    it("does not override built-in functions", () => {
+      const results = evaluateLines(["sqrt(144)"]);
+      expect(results[0].value).toBe(12);
+    });
+
+    it("does not default prev when not set", () => {
+      const results = evaluateLines(["// nothing", "prev"]);
+      expect(results[1].value).toBe(null);
+    });
+
+    it("does not default sum or average when not set", () => {
+      // With no prior numeric results, sum/average should not exist
+      const results = evaluateLines(["// nothing", "average"]);
+      expect(results[1].value).toBe(null);
+    });
+
+    it("is not flagged as assignment", () => {
+      const results = evaluateLines(["Alice"]);
+      expect(results[0].isAssignment).toBe(false);
+    });
+  });
+
+  describe("function assignment protection", () => {
+    it("shows error when assigning to a built-in function", () => {
+      const results = evaluateLines(["sqrt = 5"]);
+      expect(results[0].error).toBe(
+        'Cannot assign to built-in function "sqrt"',
+      );
+      expect(results[0].value).toBe(null);
+    });
+
+    it("blocks assignment to any math function", () => {
+      const results = evaluateLines(["sin = 1", "cos = 2", "log = 3"]);
+      expect(results[0].error).toContain("Cannot assign to built-in function");
+      expect(results[1].error).toContain("Cannot assign to built-in function");
+      expect(results[2].error).toContain("Cannot assign to built-in function");
+    });
+
+    it("does not break subsequent lines", () => {
+      const results = evaluateLines(["sqrt = 5", "2 + 2"]);
+      expect(results[0].error).toContain("Cannot assign");
+      expect(results[1].value).toBe(4);
+    });
+
+    it("allows assignment to regular variables", () => {
+      const results = evaluateLines(["x = 5"]);
+      expect(results[0].value).toBe(5);
+      expect(results[0].error).toBe(null);
+    });
+  });
+
   describe("error handling", () => {
     it("silently handles invalid expressions", () => {
-      const results = evaluateLines(["not valid math !!!"]);
+      const results = evaluateLines(["1 +"]);
       expect(results[0].value).toBe(null);
       expect(results[0].error).toBe(null);
       expect(results[0].display).toBe("");
     });
 
     it("does not break subsequent lines after an error", () => {
-      const results = evaluateLines(["bad!!!", "2 + 2"]);
+      const results = evaluateLines(["(1 +", "2 + 2"]);
       expect(values(results)).toEqual([null, 4]);
     });
   });
