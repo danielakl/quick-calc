@@ -1,3 +1,8 @@
+# Reusable build-and-test workflow.
+# Called by ci.yml (push to main) and pr.yml (pull requests).
+# Runs linting, type-checking, unit tests, E2E tests, security scans,
+# and optionally uploads the build artifact for downstream deploy jobs.
+
 name: Build
 
 on:
@@ -9,15 +14,18 @@ on:
         default: false
 
 jobs:
-  build:
-    name: Build & Test
+  build-and-test:
+    name: Build & test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
 
-      - uses: actions/setup-node@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
           node-version-file: ".node-version"
           cache: "pnpm"
@@ -45,15 +53,17 @@ jobs:
           command: code test
           args: --severity-threshold=high
 
-      - name: Lint
+      - name: Lint (ESLint)
         run: pnpm run lint
 
-      - name: Typecheck
+      - name: Typecheck (tsc)
         run: pnpm run typecheck
 
-      - name: Unit tests
+      - name: Unit tests (Vitest)
         run: pnpm run test:coverage
 
+      # Coverage steps use `if: always()` so reports are uploaded even when
+      # tests fail — this keeps the coverage history complete for trend tracking.
       - name: Upload coverage to Codecov
         if: always()
         uses: codecov/codecov-action@v5
@@ -62,7 +72,7 @@ jobs:
           files: coverage/coverage-final.json
           fail_ci_if_error: false
 
-      - name: Coverage summary
+      - name: Coverage summary (PR comment)
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
         with:
@@ -72,10 +82,10 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
 
-      - name: E2E tests
+      - name: E2E tests (Playwright)
         run: pnpm run test:e2e
 
-      - name: Build
+      - name: Build (Next.js static export)
         run: pnpm run build
 
       - name: Upload build artifact

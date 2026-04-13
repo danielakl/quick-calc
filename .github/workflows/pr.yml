@@ -1,3 +1,6 @@
+# Pull request validation.
+# Runs the shared build-and-test workflow without deploying.
+
 name: PR
 
 on:
@@ -15,6 +18,6 @@ on:
       - "LICENSE"
 
 jobs:
-  build:
+  build-and-test:
     uses: ./.github/workflows/build.yml
     secrets: inherit

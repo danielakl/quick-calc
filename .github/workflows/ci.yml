@@ -1,3 +1,7 @@
+# Main CI/CD pipeline for pushes to main.
+# Flow: build & test → deploy to dev → deploy to prod → tag & release.
+# The Production environment gate requires manual approval before prod deploy.
+
 name: CI
 
 on:
@@ -14,15 +18,15 @@ on:
       - "LICENSE"
 
 jobs:
-  build:
+  build-and-test:
     uses: ./.github/workflows/build.yml
     with:
       upload-artifact: true
     secrets: inherit
 
   deploy-dev:
-    name: Deploy to dev
-    needs: build
+    name: Deploy to Development
+    needs: build-and-test
     runs-on: ubuntu-latest
     environment: Development
     permissions:
@@ -43,9 +47,11 @@ jobs:
           command: pages deploy out --project-name=quick-calc --branch=dev
 
   deploy-prod:
-    name: Deploy to Prod
+    name: Deploy to Production
     needs: deploy-dev
     runs-on: ubuntu-latest
+    # The Production environment can be configured with protection rules
+    # (e.g. required reviewers) to gate production deployments.
     environment: Production
     permissions:
       contents: read
@@ -57,7 +63,7 @@ jobs:
           name: build-output
           path: out/
 
-      - name: Deploy to Cloudflare Pages (production)
+      - name: Deploy to Cloudflare Pages (prod)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -71,11 +77,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Tag and release
+      - name: Create tag and GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
