@@ -40,9 +40,9 @@ Quick Calc supports **dark** (default) and **light** themes. Colors are defined 
 | `--color-accent`       | `#7c3aed`                  | Results, links, interactive cues   |
 | `--color-accent-hover` | `#6d28d9`                  | Accent hover state                 |
 | `--color-accent-dim`   | `rgba(124, 58, 237, 0.4)`  | Assignment results, subtle accents |
-| `--color-error`        | `#dc2626`                  | Error text                         |
-| `--color-success`      | `#16a34a`                  | Success indicators                 |
-| `--color-warning`      | `#d97706`                  | Warnings                           |
+| `--color-error`        | `#cc2626`                  | Error text                         |
+| `--color-success`      | `#0d7a3a`                  | Success indicators                 |
+| `--color-warning`      | `#a84b08`                  | Warnings                           |
 | `--color-caret`        | `#7c3aed`                  | Text cursor                        |
 | `--color-selection`    | `rgba(124, 58, 237, 0.15)` | Text selection highlight           |
 
@@ -253,7 +253,7 @@ Custom scrollbar styling (WebKit):
 - **Width:** `6px`
 - **Track:** Transparent
 - **Thumb:** `var(--color-border)`, `border-radius: 3px`
-- **Thumb hover:** Slightly lighter (dark: `#444` / light: `#ccc`)
+- **Thumb hover:** Slightly lighter (dark: `#444` / light: `#ccc`). These are browser-chrome values not exposed as design tokens.
 
 For Firefox, use `scrollbar-width: thin` and `scrollbar-color: var(--color-border) transparent`.
 
@@ -263,7 +263,7 @@ For Firefox, use `scrollbar-width: thin` and `scrollbar-color: var(--color-borde
 
 Theme switching is done via CSS custom properties. The recommended approach:
 
-1. Define dark theme tokens as defaults in `@theme inline` in `globals.css`
+1. Define dark theme tokens as defaults in `@theme` in `globals.css`
 2. Override with light theme tokens under `html[data-theme="light"]`
 3. Toggle the `data-theme` attribute in a Zustand store action
 4. Persist the preference in `localStorage` under key `theme`
@@ -271,7 +271,7 @@ Theme switching is done via CSS custom properties. The recommended approach:
 
 ```css
 /* globals.css structure */
-@theme inline {
+@theme {
   /* Dark theme tokens (default) */
   --color-background: #0c0a14;
   --color-surface: #161225;
@@ -281,8 +281,8 @@ Theme switching is done via CSS custom properties. The recommended approach:
 }
 
 html[data-theme="light"] {
-  --color-background: #faf9fc;
-  --color-surface: #ffffff;
+  --color-background: #f5f3ef;
+  --color-surface: #faf8f5;
   /* ... */
 }
 ```

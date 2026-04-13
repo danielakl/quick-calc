@@ -17,9 +17,9 @@ All default Tailwind values cleared (`--color-*: initial`). Use ONLY these token
 | `accent`        | `#8b5cf6`               | `#7c3aed`               | Results, links, interactive cues         |
 | `accent-hover`  | `#a78bfa`               | `#6d28d9`               | Accent in hover state                    |
 | `accent-dim`    | `rgba(139,92,246,0.45)` | `rgba(124,58,237,0.4)`  | Assignment results, subtle accents       |
-| `error`         | `#f87171`               | `#dc2626`               | Error text, invalid input                |
-| `success`       | `#4ade80`               | `#16a34a`               | Success indicators                       |
-| `warning`       | `#fbbf24`               | `#d97706`               | Warnings                                 |
+| `error`         | `#f87171`               | `#cc2626`               | Error text, invalid input                |
+| `success`       | `#4ade80`               | `#0d7a3a`               | Success indicators                       |
+| `warning`       | `#fbbf24`               | `#a84b08`               | Warnings                                 |
 | `caret`         | `#8b5cf6`               | `#7c3aed`               | Text cursor in inputs                    |
 | `selection`     | `rgba(139,92,246,0.2)`  | `rgba(124,58,237,0.15)` | Text selection highlight                 |
 | `white`         | `#ffffff`               | `#ffffff`               | Pure white (use sparingly)               |
