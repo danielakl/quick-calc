@@ -62,7 +62,7 @@ export default function HelpModal() {
         createPortal(
           <div
             data-testid="help-overlay"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs"
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-xs"
             onClick={close}
           >
             <div
