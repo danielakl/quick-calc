@@ -107,6 +107,18 @@ export default function HelpModal() {
                   </div>
                 </Section>
 
+                <Section title="Custom Functions">
+                  <p>
+                    Assign an expression with unknowns to create a function.
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <Example input="f = x^2 + 1" />
+                    <Example input="f(3)" result="10" />
+                    <Example input="area = w * h" />
+                    <Example input="area(3, 4)" result="12" />
+                  </div>
+                </Section>
+
                 <Section title="Name Counting">
                   <p>
                     Unrecognized names are treated as&nbsp;1. List names, then
@@ -147,6 +159,24 @@ export default function HelpModal() {
                     <Example input="round(3.7)" result="4" />
                     <Example input="abs(-42)" result="42" />
                     <Example input="max(3, 7, 2)" result="7" />
+                  </div>
+                </Section>
+
+                <Section title="Derivatives">
+                  <p>
+                    Take the derivative of a function with{" "}
+                    <code className="font-mono text-foreground">derivate</code>,{" "}
+                    <code className="font-mono text-foreground">derive</code>,
+                    or{" "}
+                    <code className="font-mono text-foreground">
+                      derivative
+                    </code>
+                    .
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <Example input="f = x^2 + x" />
+                    <Example input="g = derivate(f)" />
+                    <Example input="g(3)" result="7" />
                   </div>
                 </Section>
 

@@ -80,9 +80,11 @@ describe("HelpModal", () => {
 
     expect(screen.getByText("Basic Math")).toBeInTheDocument();
     expect(screen.getByText("Variables")).toBeInTheDocument();
+    expect(screen.getByText("Custom Functions")).toBeInTheDocument();
     expect(screen.getByText("Name Counting")).toBeInTheDocument();
     expect(screen.getByText("Built-in References")).toBeInTheDocument();
     expect(screen.getByText("Functions")).toBeInTheDocument();
+    expect(screen.getByText("Derivatives")).toBeInTheDocument();
     expect(screen.getByText("Constants")).toBeInTheDocument();
     expect(screen.getByText("Comments")).toBeInTheDocument();
   });
