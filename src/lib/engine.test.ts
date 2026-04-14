@@ -76,6 +76,25 @@ describe("evaluateLines", () => {
       const results = evaluateLines(["x = 1", "x = x + 9", "x"]);
       expect(values(results)).toEqual([1, 10, 10]);
     });
+
+    it("supports Unicode letter identifiers", () => {
+      const results = evaluateLines(["café = 5"]);
+      expect(results[0].value).toBe(5);
+      expect(results[0].isAssignment).toBe(true);
+    });
+
+    it("supports Greek letter assignment and reuse", () => {
+      const results = evaluateLines(["π = 3.14", "π * 2"]);
+      expect(results[0].value).toBeCloseTo(3.14);
+      expect(results[0].isAssignment).toBe(true);
+      expect(results[1].value).toBeCloseTo(6.28);
+    });
+
+    it("does not block Unicode identifiers as built-in functions", () => {
+      const results = evaluateLines(["café = 10"]);
+      expect(results[0].error).toBe(null);
+      expect(results[0].value).toBe(10);
+    });
   });
 
   describe("builtins: prev, sum, average", () => {
