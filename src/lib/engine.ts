@@ -10,8 +10,11 @@ export interface LineResult {
   isAssignment: boolean;
 }
 
-const ASSIGNMENT_RE = /^\s*([a-zA-Z_]\w*)\s*=/;
+/** Matches `identifier =` at line start; captures the variable name. Supports Unicode identifiers via \p{L}/\p{N}. */
+const ASSIGNMENT_RE = /^\s*([\p{L}_][\p{L}\p{N}_]*)\s*=/u;
+/** Matches lines that are comments (// or #), including indented ones. */
 const COMMENT_RE = /^\s*(\/\/|#)/;
+/** Variables injected by the engine — excluded from the "default to 1" logic. */
 const BUILTIN_VARS = new Set(["prev", "sum", "average"]);
 const mathNamespace = math as unknown as Record<string, unknown>;
 
