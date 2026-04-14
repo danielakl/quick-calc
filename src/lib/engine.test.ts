@@ -97,6 +97,96 @@ describe("evaluateLines", () => {
     });
   });
 
+  describe("function assignments", () => {
+    it("defines and calls a single-param function", () => {
+      const results = evaluateLines(["f(x) = x^2", "f(3)"]);
+      expect(results[0].value).toBe(null);
+      expect(results[0].isAssignment).toBe(true);
+      expect(results[0].error).toBe(null);
+      expect(results[1].value).toBe(9);
+    });
+
+    it("displays the function expression", () => {
+      const results = evaluateLines(["f(x) = x^2"]);
+      expect(results[0].display).toBe("x ^ 2");
+    });
+
+    it("defines and calls a multi-param function", () => {
+      const results = evaluateLines(["area(w, h) = w * h", "area(3, 4)"]);
+      expect(results[1].value).toBe(12);
+    });
+
+    it("uses function result in expressions", () => {
+      const results = evaluateLines(["f(x) = x^2", "f(3) + 1"]);
+      expect(results[1].value).toBe(10);
+    });
+
+    it("uses scope variables inside function body", () => {
+      const results = evaluateLines([
+        "rate = 0.1",
+        "tax(x) = x * rate",
+        "tax(100)",
+      ]);
+      expect(results[2].value).toBeCloseTo(10);
+    });
+
+    it("does not default function parameters to 1", () => {
+      const results = evaluateLines(["f(x) = x + 10", "f(5)"]);
+      expect(results[1].value).toBe(15);
+    });
+
+    it("blocks assignment to built-in functions", () => {
+      const results = evaluateLines(["sin(x) = x"]);
+      expect(results[0].error).toBe('Cannot assign to built-in function "sin"');
+      expect(results[0].value).toBe(null);
+    });
+
+    it("does not break subsequent lines after function definition", () => {
+      const results = evaluateLines(["f(x) = x * 2", "10 + 5"]);
+      expect(results[1].value).toBe(15);
+    });
+
+    it("function definition does not contribute to prev or sum", () => {
+      const results = evaluateLines(["10", "f(x) = x^2", "prev"]);
+      expect(results[2].value).toBe(10);
+    });
+  });
+
+  describe("simplified function declarations", () => {
+    it("creates function from assignment with free variables", () => {
+      const results = evaluateLines(["func = x^2 + 5", "func(3)"]);
+      expect(results[0].value).toBe(null);
+      expect(results[0].isAssignment).toBe(true);
+      expect(results[0].display).toBe("x ^ 2 + 5");
+      expect(results[1].value).toBe(14);
+    });
+
+    it("creates multi-param function", () => {
+      const results = evaluateLines(["f = x + y", "f(3, 4)"]);
+      expect(results[1].value).toBe(7);
+    });
+
+    it("evaluates normally when all variables are in scope", () => {
+      const results = evaluateLines(["x = 5", "y = x + 1"]);
+      expect(results[1].value).toBe(6);
+      expect(results[1].isAssignment).toBe(true);
+    });
+
+    it("captures scope variables in function body", () => {
+      const results = evaluateLines([
+        "rate = 0.1",
+        "tax = x * rate",
+        "tax(100)",
+      ]);
+      expect(results[2].value).toBeCloseTo(10);
+    });
+
+    it("can be passed to derivate", () => {
+      const results = evaluateLines(["f = x^2", "g = derivate(f)", "g(5)"]);
+      expect(results[2].value).toBe(10);
+    });
+  });
+
   describe("builtins: prev, sum, average", () => {
     it("prev references the last numeric result", () => {
       const results = evaluateLines(["42", "prev + 8"]);
@@ -255,6 +345,75 @@ describe("evaluateLines", () => {
       const results = evaluateLines(["sin", "2 + 2"]);
       expect(results[0].error).toBe("sin requires 1 argument");
       expect(results[1].value).toBe(4);
+    });
+  });
+
+  describe("derivative", () => {
+    it("returns symbolic derivative of a polynomial", () => {
+      const results = evaluateLines(['derivative("x^2", "x")']);
+      expect(results[0].value).toBe(null);
+      expect(results[0].display).toBe("2 * x");
+      expect(results[0].error).toBe(null);
+    });
+
+    it("returns symbolic derivative of a trig function", () => {
+      const results = evaluateLines(['derivative("sin(x)", "x")']);
+      expect(results[0].display).toBe("cos(x)");
+    });
+
+    it("returns constant for linear expression", () => {
+      const results = evaluateLines(['derivative("3 * x + 5", "x")']);
+      expect(results[0].display).toBe("3");
+    });
+
+    it("does not break subsequent lines", () => {
+      const results = evaluateLines(['derivative("x^2", "x")', "2 + 2"]);
+      expect(results[0].display).toBe("2 * x");
+      expect(results[1].value).toBe(4);
+    });
+
+    it("does not contribute to prev, sum, or average", () => {
+      const results = evaluateLines(["10", 'derivative("x^2", "x")', "prev"]);
+      expect(results[2].value).toBe(10);
+    });
+
+    it("derive is an alias for derivative", () => {
+      const results = evaluateLines(['derive("x^2", "x")']);
+      expect(results[0].display).toBe("2 * x");
+    });
+
+    it("derivate is an alias for derivative", () => {
+      const results = evaluateLines(['derivate("x^2", "x")']);
+      expect(results[0].display).toBe("2 * x");
+    });
+
+    it("derivative accepts a user-defined function", () => {
+      const results = evaluateLines(["f(x) = x^2", "derivative(f)"]);
+      expect(results[1].display).toBe("2 * x");
+    });
+
+    it("derivate returns a callable function", () => {
+      const results = evaluateLines(["f = x^3", "g = derivate(f)", "g(2)"]);
+      expect(results[1].display).toBe("3 * x ^ 2");
+      expect(results[2].value).toBe(12);
+    });
+
+    it("end-to-end: define, derive, call both", () => {
+      const results = evaluateLines([
+        "func = x^2 + x - 1",
+        "func2 = derivate(func)",
+        "func(10)",
+        "func2(10)",
+      ]);
+      expect(results[0].display).toBe("x ^ 2 + x - 1");
+      expect(results[1].display).toBe("2 * x + 1");
+      expect(results[2].value).toBe(109);
+      expect(results[3].value).toBe(21);
+    });
+
+    it("derives traditional function declaration", () => {
+      const results = evaluateLines(["f(x) = x^3", "g = derive(f)", "g(2)"]);
+      expect(results[2].value).toBe(12);
     });
   });
 
