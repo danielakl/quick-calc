@@ -96,6 +96,14 @@ export default function HelpModal() {
                   </div>
                 </Section>
 
+                <Section title="Comments">
+                  <p>Lines starting with // or # are ignored.</p>
+                  <div className="mt-1 space-y-0.5">
+                    <Example input="// monthly budget" />
+                    <Example input="# tax rate" />
+                  </div>
+                </Section>
+
                 <Section title="Variables">
                   <p>
                     Assign values to variables and reuse them on later lines.
@@ -107,29 +115,10 @@ export default function HelpModal() {
                   </div>
                 </Section>
 
-                <Section title="Custom Functions">
-                  <p>
-                    Assign an expression with unknowns to create a function.
-                  </p>
-                  <div className="mt-1 space-y-0.5">
-                    <Example input="f = x^2 + 1" />
-                    <Example input="f(3)" result="10" />
-                    <Example input="area = w * h" />
-                    <Example input="area(3, 4)" result="12" />
-                  </div>
-                </Section>
-
-                <Section title="Name Counting">
-                  <p>
-                    Unrecognized names are treated as&nbsp;1. List names, then
-                    use <code className="font-mono text-foreground">sum</code>{" "}
-                    to count them.
-                  </p>
-                  <div className="mt-1 space-y-0.5">
-                    <Example input="Alice" result="1" />
-                    <Example input="Bob" result="1" />
-                    <Example input="Charlie" result="1" />
-                    <Example input="sum" result="3" />
+                <Section title="Constants">
+                  <div className="space-y-0.5">
+                    <Example input="pi" result="3.14159..." />
+                    <Example input="e" result="2.71828..." />
                   </div>
                 </Section>
 
@@ -150,6 +139,20 @@ export default function HelpModal() {
                   </div>
                 </Section>
 
+                <Section title="Name Counting">
+                  <p>
+                    Unrecognized names are treated as&nbsp;1. List names, then
+                    use <code className="font-mono text-foreground">sum</code>{" "}
+                    to count them.
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <Example input="Alice" result="1" />
+                    <Example input="Bob" result="1" />
+                    <Example input="Charlie" result="1" />
+                    <Example input="sum" result="3" />
+                  </div>
+                </Section>
+
                 <Section title="Functions">
                   <p>All standard math functions are available.</p>
                   <div className="mt-1 space-y-0.5">
@@ -159,6 +162,18 @@ export default function HelpModal() {
                     <Example input="round(3.7)" result="4" />
                     <Example input="abs(-42)" result="42" />
                     <Example input="max(3, 7, 2)" result="7" />
+                  </div>
+                </Section>
+
+                <Section title="Custom Functions">
+                  <p>
+                    Assign an expression with unknowns to create a function.
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <Example input="f = x^2 + 1" />
+                    <Example input="f(3)" result="10" />
+                    <Example input="area = w * h" />
+                    <Example input="area(3, 4)" result="12" />
                   </div>
                 </Section>
 
@@ -177,21 +192,6 @@ export default function HelpModal() {
                     <Example input="f = x^2 + x" />
                     <Example input="g = derivate(f)" />
                     <Example input="g(3)" result="7" />
-                  </div>
-                </Section>
-
-                <Section title="Constants">
-                  <div className="space-y-0.5">
-                    <Example input="pi" result="3.14159..." />
-                    <Example input="e" result="2.71828..." />
-                  </div>
-                </Section>
-
-                <Section title="Comments">
-                  <p>Lines starting with // or # are ignored.</p>
-                  <div className="mt-1 space-y-0.5">
-                    <Example input="// monthly budget" />
-                    <Example input="# tax rate" />
                   </div>
                 </Section>
               </div>
