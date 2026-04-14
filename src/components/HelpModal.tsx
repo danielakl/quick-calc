@@ -107,6 +107,20 @@ export default function HelpModal() {
                   </div>
                 </Section>
 
+                <Section title="Name Counting">
+                  <p>
+                    Unrecognized names are treated as&nbsp;1. List names, then
+                    use <code className="font-mono text-foreground">sum</code>{" "}
+                    to count them.
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <Example input="Alice" result="1" />
+                    <Example input="Bob" result="1" />
+                    <Example input="Charlie" result="1" />
+                    <Example input="sum" result="3" />
+                  </div>
+                </Section>
+
                 <Section title="Built-in References">
                   <p>
                     Special variables that update automatically as you type.
