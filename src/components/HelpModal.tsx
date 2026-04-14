@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { evaluateLines } from "@/lib/engine";
 import CloseIcon from "./icons/CloseIcon";
 import HelpIcon from "./icons/HelpIcon";
 
@@ -20,16 +21,30 @@ function Section({
   );
 }
 
-function Example({ input, result }: { input: string; result?: string }) {
+interface ExampleLine {
+  input: string;
+  /** Manual override — shown instead of the engine result. */
+  result?: string;
+}
+
+function ExampleGroup({ lines }: { lines: ExampleLine[] }) {
+  const results = evaluateLines(lines.map((l) => l.input));
   return (
-    <div className="flex items-baseline gap-3 font-mono text-xs">
-      <code className="text-foreground">{input}</code>
-      {result && (
-        <span className="text-accent-dim">
-          {"\u2192"} {result}
-        </span>
-      )}
-    </div>
+    <>
+      {lines.map((line, i) => {
+        const display = line.result ?? (results[i].display || undefined);
+        return (
+          <div key={i} className="flex items-baseline gap-3 font-mono text-xs">
+            <code className="text-foreground">{line.input}</code>
+            {display && (
+              <span className="text-accent-dim">
+                {"\u2192"} {display}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 
@@ -88,19 +103,27 @@ export default function HelpModal() {
                 <Section title="Basic Math">
                   <p>Type one expression per line. Supported operators:</p>
                   <div className="mt-1 space-y-0.5">
-                    <Example input="5 + 3" result="8" />
-                    <Example input="2 * (4 + 1)" result="10" />
-                    <Example input="10 / 3" result="3.333..." />
-                    <Example input="2 ^ 8" result="256" />
-                    <Example input="17 % 5" result="2" />
+                    <ExampleGroup
+                      lines={[
+                        { input: "5 + 3" },
+                        { input: "2 * (4 + 1)" },
+                        { input: "10 / 3" },
+                        { input: "2 ^ 8" },
+                        { input: "17 % 5" },
+                      ]}
+                    />
                   </div>
                 </Section>
 
                 <Section title="Comments">
                   <p>Lines starting with // or # are ignored.</p>
                   <div className="mt-1 space-y-0.5">
-                    <Example input="// monthly budget" />
-                    <Example input="# tax rate" />
+                    <ExampleGroup
+                      lines={[
+                        { input: "// monthly budget" },
+                        { input: "# tax rate" },
+                      ]}
+                    />
                   </div>
                 </Section>
 
@@ -109,16 +132,19 @@ export default function HelpModal() {
                     Assign values to variables and reuse them on later lines.
                   </p>
                   <div className="mt-1 space-y-0.5">
-                    <Example input="price = 49.99" />
-                    <Example input="qty = 3" />
-                    <Example input="price * qty" result="149.97" />
+                    <ExampleGroup
+                      lines={[
+                        { input: "price = 49.99" },
+                        { input: "qty = 3" },
+                        { input: "price * qty" },
+                      ]}
+                    />
                   </div>
                 </Section>
 
                 <Section title="Constants">
                   <div className="space-y-0.5">
-                    <Example input="pi" result="3.14159..." />
-                    <Example input="e" result="2.71828..." />
+                    <ExampleGroup lines={[{ input: "pi" }, { input: "e" }]} />
                   </div>
                 </Section>
 
@@ -127,14 +153,21 @@ export default function HelpModal() {
                     Special variables that update automatically as you type.
                   </p>
                   <div className="mt-1 space-y-0.5">
-                    <Example
-                      input="prev"
-                      result="result of the previous line"
-                    />
-                    <Example input="sum" result="total of all results so far" />
-                    <Example
-                      input="average"
-                      result="mean of all results so far"
+                    <ExampleGroup
+                      lines={[
+                        {
+                          input: "prev",
+                          result: "result of the previous line",
+                        },
+                        {
+                          input: "sum",
+                          result: "total of all results so far",
+                        },
+                        {
+                          input: "average",
+                          result: "mean of all results so far",
+                        },
+                      ]}
                     />
                   </div>
                 </Section>
@@ -146,22 +179,30 @@ export default function HelpModal() {
                     to count them.
                   </p>
                   <div className="mt-1 space-y-0.5">
-                    <Example input="Alice" result="1" />
-                    <Example input="Bob" result="1" />
-                    <Example input="Charlie" result="1" />
-                    <Example input="sum" result="3" />
+                    <ExampleGroup
+                      lines={[
+                        { input: "Alice" },
+                        { input: "Bob" },
+                        { input: "Charlie" },
+                        { input: "sum" },
+                      ]}
+                    />
                   </div>
                 </Section>
 
                 <Section title="Functions">
                   <p>All standard math functions are available.</p>
                   <div className="mt-1 space-y-0.5">
-                    <Example input="sqrt(144)" result="12" />
-                    <Example input="sin(pi / 2)" result="1" />
-                    <Example input="log(1000, 10)" result="3" />
-                    <Example input="round(3.7)" result="4" />
-                    <Example input="abs(-42)" result="42" />
-                    <Example input="max(3, 7, 2)" result="7" />
+                    <ExampleGroup
+                      lines={[
+                        { input: "sqrt(144)" },
+                        { input: "sin(pi / 2)" },
+                        { input: "log(1000, 10)" },
+                        { input: "round(3.7)" },
+                        { input: "abs(-42)" },
+                        { input: "max(3, 7, 2)" },
+                      ]}
+                    />
                   </div>
                 </Section>
 
@@ -170,10 +211,14 @@ export default function HelpModal() {
                     Assign an expression with unknowns to create a function.
                   </p>
                   <div className="mt-1 space-y-0.5">
-                    <Example input="f = x^2 + 1" />
-                    <Example input="f(3)" result="10" />
-                    <Example input="area = w * h" />
-                    <Example input="area(3, 4)" result="12" />
+                    <ExampleGroup
+                      lines={[
+                        { input: "f = x^2 + 1" },
+                        { input: "f(3)" },
+                        { input: "area = w * h" },
+                        { input: "area(3, 4)" },
+                      ]}
+                    />
                   </div>
                 </Section>
 
@@ -189,9 +234,13 @@ export default function HelpModal() {
                     .
                   </p>
                   <div className="mt-1 space-y-0.5">
-                    <Example input="f = x^2 + x" />
-                    <Example input="g = derivate(f)" />
-                    <Example input="g(3)" result="7" />
+                    <ExampleGroup
+                      lines={[
+                        { input: "f = x^2 + x" },
+                        { input: "g = derivate(f)" },
+                        { input: "g(3)" },
+                      ]}
+                    />
                   </div>
                 </Section>
               </div>
