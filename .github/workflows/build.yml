@@ -33,8 +33,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Audit dependencies
-        run: pnpm audit --audit-level=high
+      # Issue: npm registry has retired both legacy audit endpoints and now returns HTTP 410
+      # Fix 1: Rely on snyk scan
+      # Fix 2: Wait for pnpm 11 or backport fix
+      # See: https://github.com/pnpm/pnpm/issues/11265
+      #- name: Audit dependencies
+      #  run: pnpm audit --audit-level=high
 
       # Snyk Open Source (SCA) — complements pnpm audit with Snyk's curated vuln DB
       - name: Snyk Open Source scan
