@@ -2,7 +2,6 @@ import {
   create,
   all,
   isSymbolNode,
-  isConstantNode,
   type SymbolNode,
   type MathNode,
 } from "mathjs";
