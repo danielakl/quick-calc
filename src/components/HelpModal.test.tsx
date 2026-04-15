@@ -87,6 +87,7 @@ describe("HelpModal", () => {
     expect(screen.getByText("Functions")).toBeInTheDocument();
     expect(screen.getByText("Custom Functions")).toBeInTheDocument();
     expect(screen.getByText("Derivatives")).toBeInTheDocument();
+    expect(screen.getByText("Integrals")).toBeInTheDocument();
   });
 
   it("displays example expressions", async () => {

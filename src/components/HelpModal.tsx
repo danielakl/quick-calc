@@ -243,6 +243,29 @@ export default function HelpModal() {
                     />
                   </div>
                 </Section>
+
+                <Section title="Integrals">
+                  <p>
+                    Compute the antiderivative of a function with{" "}
+                    <code className="font-mono text-foreground">integrate</code>
+                    ,{" "}
+                    <code className="font-mono text-foreground">integral</code>,
+                    or{" "}
+                    <code className="font-mono text-foreground">
+                      antiderivative
+                    </code>
+                    .
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <ExampleGroup
+                      lines={[
+                        { input: "f = x^2 + x" },
+                        { input: "g = integrate(f)" },
+                        { input: "g(3)" },
+                      ]}
+                    />
+                  </div>
+                </Section>
               </div>
             </div>
           </div>,

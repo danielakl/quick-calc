@@ -2,12 +2,23 @@ import {
   create,
   all,
   isSymbolNode,
+  isConstantNode,
   type SymbolNode,
   type MathNode,
 } from "mathjs";
 import { formatNumber } from "./formatter";
+import { createIntegral } from "./integral";
+import {
+  isUserFunc,
+  isFuncAssignNode,
+  isAssignNode,
+  isMathNode,
+  isCoercibleNumeric,
+  type UserFunc,
+} from "./typeGuards";
 
 const math = create(all, {});
+const mathIntegral = createIntegral(math);
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -16,60 +27,6 @@ export interface LineResult {
   display: string;
   error: string | null;
   isAssignment: boolean;
-}
-
-// ─── Internal types & type guards ────────────────────────────────────────────
-
-/** A user-defined function carrying its source expression and parameter names. */
-interface UserFunc {
-  (...args: number[]): number;
-  __expr: string;
-  __params: string[];
-}
-
-function isUserFunc(value: unknown): value is UserFunc {
-  return (
-    typeof value === "function" && "__expr" in value && "__params" in value
-  );
-}
-
-/** mathjs FunctionAssignmentNode (e.g. `f(x) = x^2`). */
-interface FuncAssignNode extends MathNode {
-  type: "FunctionAssignmentNode";
-  name: string;
-  params: string[];
-}
-
-function isFuncAssignNode(node: MathNode): node is FuncAssignNode {
-  return node.type === "FunctionAssignmentNode";
-}
-
-/** mathjs AssignmentNode (e.g. `x = 5` or `func = x^2`). */
-interface AssignNode extends MathNode {
-  type: "AssignmentNode";
-  object: SymbolNode;
-  value: MathNode;
-}
-
-function isAssignNode(node: MathNode): node is AssignNode {
-  return node.type === "AssignmentNode";
-}
-
-/** mathjs symbolic result node (e.g. derivative output). */
-function isMathNode(value: unknown): value is MathNode {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "isNode" in value &&
-    (value as { isNode: unknown }).isNode === true
-  );
-}
-
-/** mathjs BigNumber, Fraction, or Unit — numeric objects coercible via Number(). */
-function isCoercibleNumeric(
-  value: unknown,
-): value is { toNumber(): number } & object {
-  return typeof value === "object" && value !== null && "toNumber" in value;
 }
 
 // ─── Derivative support ──────────────────────────────────────────────────────
@@ -101,11 +58,44 @@ function derivativeHandler(...args: unknown[]): unknown {
   return (math.derivative as (...a: unknown[]) => unknown)(...args);
 }
 
+// ─── Integral support ───────────────────────────────────────────────────────
+
+/** Compute the integral of a UserFunc, returning a new callable UserFunc. */
+function integrateUserFunc(fn: UserFunc): UserFunc {
+  const integNode = mathIntegral(fn.__expr, fn.__params[0]);
+  const integExpr = integNode.toString();
+  const compiled = integNode.compile();
+  const params = [...fn.__params];
+
+  return Object.assign(
+    (...args: number[]): number => {
+      const s: Record<string, unknown> = {};
+      params.forEach((p, i) => {
+        s[p] = args[i];
+      });
+      return compiled.evaluate(s) as number;
+    },
+    { __expr: integExpr, __params: params },
+  );
+}
+
+/** Accepts a UserFunc (returns UserFunc) or falls through to the symbolic
+ *  integral (returns MathNode). Registered as integral/integrate/antiderivative
+ *  via scope injection. */
+function integralHandler(...args: unknown[]): unknown {
+  if (args.length >= 1 && isUserFunc(args[0]))
+    return integrateUserFunc(args[0]);
+  return mathIntegral(...(args as [string, string]));
+}
+
 /** Custom functions injected into every evaluation scope. */
 const SCOPE_FUNCTIONS: Record<string, unknown> = {
   derivative: derivativeHandler,
   derive: derivativeHandler,
   derivate: derivativeHandler,
+  integral: integralHandler,
+  integrate: integralHandler,
+  antiderivative: integralHandler,
 };
 
 // ─── Constants ───────────────────────────────────────────────────────────────

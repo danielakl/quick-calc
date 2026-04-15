@@ -417,6 +417,86 @@ describe("evaluateLines", () => {
     });
   });
 
+  describe("integral", () => {
+    it("returns symbolic integral of a polynomial", () => {
+      const results = evaluateLines(['integral("x^2", "x")']);
+      expect(results[0].value).toBe(null);
+      expect(results[0].display).toBe("x ^ 3 / 3");
+      expect(results[0].error).toBe(null);
+    });
+
+    it("returns symbolic integral of a trig function", () => {
+      const results = evaluateLines(['integral("sin(x)", "x")']);
+      expect(results[0].display).toBe("-cos(x)");
+    });
+
+    it("returns symbolic integral of a constant", () => {
+      const results = evaluateLines(['integral("5", "x")']);
+      expect(results[0].display).toBe("5 * x");
+    });
+
+    it("does not break subsequent lines", () => {
+      const results = evaluateLines(['integral("x^2", "x")', "2 + 2"]);
+      expect(results[0].display).toBe("x ^ 3 / 3");
+      expect(results[1].value).toBe(4);
+    });
+
+    it("does not contribute to prev, sum, or average", () => {
+      const results = evaluateLines(["10", 'integral("x^2", "x")', "prev"]);
+      expect(results[2].value).toBe(10);
+    });
+
+    it("integrate is an alias for integral", () => {
+      const results = evaluateLines(['integrate("x^2", "x")']);
+      expect(results[0].display).toBe("x ^ 3 / 3");
+    });
+
+    it("antiderivative is an alias for integral", () => {
+      const results = evaluateLines(['antiderivative("x^2", "x")']);
+      expect(results[0].display).toBe("x ^ 3 / 3");
+    });
+
+    it("integral accepts a user-defined function", () => {
+      const results = evaluateLines(["f(x) = x^2", "integral(f)"]);
+      expect(results[1].display).toBe("x ^ 3 / 3");
+    });
+
+    it("integrate returns a callable function", () => {
+      const results = evaluateLines(["f = x^3", "g = integrate(f)", "g(2)"]);
+      expect(results[1].display).toBe("x ^ 4 / 4");
+      expect(results[2].value).toBe(4);
+    });
+
+    it("end-to-end: define, integrate, call both", () => {
+      const results = evaluateLines([
+        "func = x^2 + x",
+        "func2 = integrate(func)",
+        "func(3)",
+        "func2(3)",
+      ]);
+      expect(results[0].display).toBe("x ^ 2 + x");
+      expect(results[2].value).toBe(12);
+      // ∫(x^2 + x) = x^3/3 + x^2/2 → at x=3: 9 + 4.5 = 13.5
+      expect(results[3].value).toBeCloseTo(13.5);
+    });
+
+    it("roundtrip: derivate(integrate(f)) recovers original", () => {
+      const results = evaluateLines([
+        "f = x^2",
+        "g = integrate(f)",
+        "h = derivate(g)",
+        "h(5)",
+      ]);
+      // h should be equivalent to f: x^2
+      expect(results[3].value).toBe(25);
+    });
+
+    it("integrates traditional function declaration", () => {
+      const results = evaluateLines(["f(x) = x^3", "g = integrate(f)", "g(2)"]);
+      expect(results[2].value).toBe(4);
+    });
+  });
+
   describe("display formatting", () => {
     it("formats integers with thousand separators", () => {
       const results = evaluateLines(["1000000"]);
