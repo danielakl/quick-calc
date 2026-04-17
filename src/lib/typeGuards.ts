@@ -45,6 +45,23 @@ export function isMathNode(value: unknown): value is MathNode {
   );
 }
 
+/** mathjs FunctionNode (e.g. `sin(x)` or `derivate(f)`). */
+export interface FnCallNode extends MathNode {
+  type: "FunctionNode";
+  fn: { name: string };
+  args: MathNode[];
+}
+
+export function isFnCallNode(node: MathNode): node is FnCallNode {
+  if (node.type !== "FunctionNode") return false;
+  const fn = (node as unknown as Record<string, unknown>).fn;
+  return (
+    !!fn &&
+    typeof fn === "object" &&
+    typeof (fn as Record<string, unknown>).name === "string"
+  );
+}
+
 /** mathjs BigNumber, Fraction, or Unit — numeric objects coercible via Number(). */
 export function isCoercibleNumeric(
   value: unknown,
