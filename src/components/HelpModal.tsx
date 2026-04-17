@@ -224,20 +224,20 @@ export default function HelpModal() {
 
                 <Section title="Derivatives">
                   <p>
-                    Take the derivative of a function with{" "}
+                    Take the derivative with{" "}
                     <code className="font-mono text-foreground">derivate</code>,{" "}
                     <code className="font-mono text-foreground">derive</code>,
                     or{" "}
                     <code className="font-mono text-foreground">
                       derivative
                     </code>
-                    .
+                    . The variable is inferred automatically.
                   </p>
                   <div className="mt-1 space-y-0.5">
                     <ExampleGroup
                       lines={[
-                        { input: "f = x^2 + x" },
-                        { input: "g = derivate(f)" },
+                        { input: "derivate(3 * x + 5)" },
+                        { input: "g = derivate(x^2 + x)" },
                         { input: "g(3)" },
                       ]}
                     />
@@ -246,7 +246,7 @@ export default function HelpModal() {
 
                 <Section title="Integrals">
                   <p>
-                    Compute the antiderivative of a function with{" "}
+                    Compute the antiderivative with{" "}
                     <code className="font-mono text-foreground">integrate</code>
                     ,{" "}
                     <code className="font-mono text-foreground">integral</code>,
@@ -254,14 +254,14 @@ export default function HelpModal() {
                     <code className="font-mono text-foreground">
                       antiderivative
                     </code>
-                    .
+                    . The variable is inferred automatically.
                   </p>
                   <div className="mt-1 space-y-0.5">
                     <ExampleGroup
                       lines={[
-                        { input: "f = x^2 + x" },
-                        { input: "g = integrate(f)" },
-                        { input: "g(3)" },
+                        { input: "integrate(x^2 + x)" },
+                        { input: "g = integrate(sin(x))" },
+                        { input: "g(0)" },
                       ]}
                     />
                   </div>
