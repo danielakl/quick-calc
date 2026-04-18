@@ -477,15 +477,6 @@ export function evaluateLines(lines: string[]): LineResult[] {
         }
       }
 
-      // Default undefined variables to 1 so bare names (e.g. "Alice", "Bob")
-      // can be used as presence counters — each name contributes 1 to sum.
-      const excludeParams = isFuncAssignNode(node)
-        ? new Set(node.params)
-        : undefined;
-      for (const name of collectFreeVars(node, scope, excludeParams)) {
-        scope[name] = 1;
-      }
-
       const result = node.evaluate(scope);
 
       // Attach UserFunc metadata to mathjs function assignments so they

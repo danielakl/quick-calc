@@ -185,24 +185,6 @@ export default function HelpModal() {
                   </div>
                 </Section>
 
-                <Section title="Name Counting">
-                  <p>
-                    Unrecognized names are treated as&nbsp;1. List names, then
-                    use <code className="font-mono text-foreground">sum</code>{" "}
-                    to count them.
-                  </p>
-                  <div className="mt-1 space-y-0.5">
-                    <ExampleGroup
-                      lines={[
-                        { input: "Alice" },
-                        { input: "Bob" },
-                        { input: "Charlie" },
-                        { input: "sum" },
-                      ]}
-                    />
-                  </div>
-                </Section>
-
                 <Section title="Functions">
                   <p>All standard math functions are available.</p>
                   <div className="mt-1 space-y-0.5">
