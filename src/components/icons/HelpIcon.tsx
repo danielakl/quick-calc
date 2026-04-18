@@ -2,7 +2,7 @@ interface IconProps {
   size?: number;
 }
 
-export default function HelpIcon({ size = 16 }: IconProps) {
+export default function HelpIcon({ size = 20 }: IconProps) {
   return (
     <svg
       width={size}

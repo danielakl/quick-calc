@@ -2,7 +2,7 @@ interface IconProps {
   size?: number;
 }
 
-export default function MoonIcon({ size = 16 }: IconProps) {
+export default function MoonIcon({ size = 20 }: IconProps) {
   return (
     <svg
       width={size}
