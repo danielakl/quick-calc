@@ -86,7 +86,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="deploy-$(date -u +%Y%m%d-%H%M%S)"
+          TAG="$(date -u +%Y.%m.%d.%H%M%S)"
           git tag "$TAG"
           git push origin "$TAG"
           gh release create "$TAG" --title "$TAG" --generate-notes
