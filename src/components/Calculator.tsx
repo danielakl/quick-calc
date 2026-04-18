@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useSyncExternalStore } from "react";
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import { useCalcStore, initFromURL } from "@/stores/useCalcStore";
 import { initTheme } from "@/stores/useThemeStore";
 import HelpModal from "./HelpModal";
@@ -13,6 +19,7 @@ export default function Calculator() {
   const { text, results, setText } = useCalcStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const [previewMode, setPreviewMode] = useState(true);
   const hydrated = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -34,6 +41,7 @@ export default function Calculator() {
   }, []);
 
   const lineCount = text.split("\n").length;
+  const hasResults = results.some((r) => r.display !== "" || r.error !== null);
   const paddedResults = [
     ...results,
     ...Array(Math.max(0, lineCount - results.length)).fill({
@@ -43,6 +51,18 @@ export default function Calculator() {
       isAssignment: false,
     }),
   ];
+
+  // Sync scroll position when results panel appears.
+  // Uses rAF so the panel has its transitioned dimensions before we assign scrollTop.
+  useEffect(() => {
+    if (hasResults && textareaRef.current && resultsRef.current) {
+      const textarea = textareaRef.current;
+      const results = resultsRef.current;
+      requestAnimationFrame(() => {
+        results.scrollTop = textarea.scrollTop;
+      });
+    }
+  }, [hasResults]);
 
   if (!hydrated) {
     return (
@@ -60,7 +80,7 @@ export default function Calculator() {
       </header>
 
       {/* Input area */}
-      <div className="relative w-[60%]">
+      <div className="relative min-w-0 flex-1">
         <textarea
           id="calc-input"
           data-testid="calc-input"
@@ -68,27 +88,38 @@ export default function Calculator() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onScroll={handleScroll}
-          className="hide-scrollbar absolute inset-0 h-full w-full overflow-y-scroll bg-transparent px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-sm leading-6 text-foreground caret-caret selection:bg-selection transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
+          onFocus={() => setPreviewMode(true)}
+          className="hide-scrollbar absolute inset-0 h-full w-full overflow-x-auto overflow-y-scroll whitespace-nowrap bg-transparent px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-base leading-6 text-foreground caret-caret selection:bg-selection transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
           placeholder="Type an expression..."
           aria-label="Calculator input"
+          wrap="off"
           spellCheck={false}
           autoFocus
         />
       </div>
 
-      {/* Divider */}
-      <div className="w-px bg-border" />
-
-      {/* Results area */}
+      {/* Results panel — overlay on mobile, in-flow on desktop */}
       <div
-        ref={resultsRef}
-        data-testid="calc-results"
-        className="w-[40%] overflow-y-auto px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-sm leading-6"
-        onScroll={handleScroll}
+        onClick={() => previewMode && setPreviewMode(false)}
+        className={`flex overflow-hidden bg-background transition-[width,opacity] duration-300 ease-in-out ${
+          hasResults
+            ? previewMode
+              ? "w-[30%] opacity-100"
+              : "absolute right-0 top-0 bottom-0 w-4/5 opacity-100"
+            : "w-0 opacity-0"
+        } ${hasResults ? "sm:relative sm:inset-auto sm:w-[35%] sm:opacity-100" : "sm:w-0 sm:opacity-0"}`}
       >
-        {paddedResults.map((result, i) => (
-          <ResultLine key={i} result={result} />
-        ))}
+        <div className="w-px shrink-0 bg-border" />
+        <div
+          ref={resultsRef}
+          data-testid="calc-results"
+          className="min-w-0 flex-1 overflow-y-auto px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-base leading-6"
+          onScroll={handleScroll}
+        >
+          {paddedResults.map((result, i) => (
+            <ResultLine key={i} result={result} />
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -81,15 +81,15 @@ Load both via `next/font/google` in `layout.tsx` and expose as CSS variables.
 
 Use these sizes consistently. Do not introduce arbitrary pixel values.
 
-| Name   | Size | Line Height | Weight | Usage                                      |
-| ------ | ---- | ----------- | ------ | ------------------------------------------ |
-| `xs`   | 12px | 16px        | 400    | Captions, footnotes, badges                |
-| `sm`   | 14px | 20px        | 400    | Calculator input/output, secondary UI text |
-| `base` | 16px | 24px        | 400    | Body text, input labels                    |
-| `lg`   | 18px | 28px        | 500    | Section headings, prominent labels         |
-| `xl`   | 20px | 28px        | 600    | Page titles                                |
+| Name   | Size | Line Height | Weight | Usage                                   |
+| ------ | ---- | ----------- | ------ | --------------------------------------- |
+| `xs`   | 12px | 16px        | 400    | Captions, footnotes, badges             |
+| `sm`   | 14px | 20px        | 400    | Secondary UI text                       |
+| `base` | 16px | 24px        | 400    | Body text, input labels, calculator I/O |
+| `lg`   | 18px | 28px        | 500    | Section headings, prominent labels      |
+| `xl`   | 20px | 28px        | 600    | Page titles                             |
 
-**Calculator area exception:** The textarea and result lines use `text-sm` (14px) with a fixed `leading-6` (24px) line height so input and output lines stay vertically aligned. Do not change this ratio without updating both sides.
+**Calculator area exception:** The textarea and result lines use `text-base` (16px) with a fixed `leading-6` (24px) line height so input and output lines stay vertically aligned. The 16px minimum also prevents mobile browsers from auto-zooming on the textarea. Do not change this ratio without updating both sides.
 
 ### Font Weights
 
@@ -180,21 +180,18 @@ Use shadows **sparingly** to convey elevation. The app is primarily flat; shadow
 
 ### Calculator Split
 
-The core layout is a horizontal split:
+The core layout is a horizontal flex split with a dynamic results panel:
 
-- **Input area:** `60%` width
-- **Results area:** `40%` width
-- **Divider:** `1px` (`w-px bg-border`)
+- **Input area:** `flex-1 min-w-0` — fills all available space, grows to 100% when no results
+- **Results wrapper:** slides in when results exist (`w-[35%]`), collapses to `w-0` when empty. Uses `transition-[width,opacity] duration-300 ease-in-out` for smooth animation. Contains the divider and results panel.
+- **Divider:** `1px` (`w-px shrink-0 bg-border`) — inside the results wrapper, appears/disappears with results
+- **Results panel:** `flex-1 min-w-0 overflow-y-auto` inside the wrapper
 
-Both sides share identical vertical padding (`p-6`) and line height (`leading-6`) to keep lines aligned.
+Both sides share identical vertical padding (`p-6`) and line height (`leading-6`) to keep lines aligned. The layout stays horizontal at all viewport sizes.
 
-### Responsive Considerations
+### Icons
 
-For future breakpoints:
-
-- **< 768px:** Stack vertically — input on top (50vh), results below (50vh). Divider becomes horizontal.
-- **768px - 1024px:** Keep split but adjust to 55/45 ratio.
-- **> 1024px:** Current 60/40 split.
+All icon components default to 20px (`size={20}`). With `p-2` button padding this gives 36px touch targets.
 
 ### Z-Index Scale
 
