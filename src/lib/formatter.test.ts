@@ -1,5 +1,9 @@
+import { create, all } from "mathjs";
 import { describe, it, expect } from "vitest";
-import { formatNumber } from "./formatter";
+import { formatNumber, formatUnit, extractUnitMagnitude } from "./formatter";
+
+const math = create(all, {});
+const unit = (expr: string) => math.evaluate(expr) as import("mathjs").Unit;
 
 describe("formatNumber", () => {
   describe("special values", () => {
@@ -65,5 +69,34 @@ describe("formatNumber", () => {
       const decimalPart = result.split(".")[1] || "";
       expect(decimalPart.length).toBeLessThanOrEqual(10);
     });
+  });
+});
+
+describe("formatUnit", () => {
+  it("formats an integer magnitude with thousand separators", () => {
+    expect(formatUnit(unit("1050 inch"))).toBe("1,050 inch");
+  });
+
+  it("formats a decimal magnitude", () => {
+    expect(formatUnit(unit("0.5 minute"))).toBe("0.5 minute");
+  });
+
+  it("formats a negative magnitude", () => {
+    expect(formatUnit(unit("-3 m"))).toBe("-3 m");
+  });
+
+  it("preserves compound unit strings", () => {
+    expect(formatUnit(unit("4 m/s"))).toBe("4 m / s");
+  });
+});
+
+describe("extractUnitMagnitude", () => {
+  it("returns the displayed magnitude", () => {
+    expect(extractUnitMagnitude(unit("10 minute"))).toBe(10);
+  });
+
+  it("does not convert to base SI", () => {
+    // 10 minute expressed in minute should be 10, not 600 (seconds).
+    expect(extractUnitMagnitude(unit("10 minute"))).not.toBe(600);
   });
 });

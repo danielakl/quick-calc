@@ -12,6 +12,8 @@ A notepad-style calculator that runs entirely in your browser. Type math express
 - **Custom functions** — define with `f = x^2 + 1` or `f(x) = x^2 + 1`, then call `f(3)`
 - **Derivatives** — `derivate(f)`, `derive(f)`, or `derivative(f)` for symbolic differentiation
 - **Integrals** — `integrate(f)`, `integral(f)`, or `antiderivative(f)` for symbolic integration
+- **Units** — mathjs units in expressions, e.g. `350 cm * 3`, `volume = 30 m^2 * 15 m`
+- **Unit conversion** — convert with `to` or `as`, e.g. `600 sec to min`, `0.5 as %`
 - **Comments** — lines starting with `//` or `#` are ignored
 - **Shareable URLs** — your entire notepad is compressed into the URL so you can share or bookmark calculations
 - **Dark/light theme** — toggle in the header, respects system preference, persists to localStorage

@@ -83,6 +83,8 @@ describe("HelpModal", () => {
     expect(screen.getByText("Variables")).toBeInTheDocument();
     expect(screen.getByText("Constants")).toBeInTheDocument();
     expect(screen.getByText("Built-in References")).toBeInTheDocument();
+    expect(screen.getByText("Units")).toBeInTheDocument();
+    expect(screen.getByText("Unit Conversion")).toBeInTheDocument();
     expect(screen.getByText("Functions")).toBeInTheDocument();
     expect(screen.getByText("Custom Functions")).toBeInTheDocument();
     expect(screen.getByText("Derivatives")).toBeInTheDocument();

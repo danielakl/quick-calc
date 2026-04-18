@@ -161,6 +161,38 @@ export default function HelpModal() {
                   </div>
                 </Section>
 
+                <Section title="Units">
+                  <p>Mixed units and exponents are supported.</p>
+                  <div className="mt-1 space-y-0.5">
+                    <ExampleGroup
+                      lines={[
+                        { input: "350 cm * 3" },
+                        { input: "volume = 30 m^2 * 15 m" },
+                        { input: "5 kg + 300 g" },
+                      ]}
+                    />
+                  </div>
+                </Section>
+
+                <Section title="Unit Conversion">
+                  <p>
+                    Convert between units with{" "}
+                    <code className="font-mono text-foreground">to</code> or{" "}
+                    <code className="font-mono text-foreground">as</code>. Use{" "}
+                    <code className="font-mono text-foreground">%</code> to
+                    format as percent.
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <ExampleGroup
+                      lines={[
+                        { input: "600 sec to min" },
+                        { input: "30 sec as minutes" },
+                        { input: "0.5 as %" },
+                      ]}
+                    />
+                  </div>
+                </Section>
+
                 <Section title="Built-in References">
                   <p>
                     Special variables that update automatically as you type.

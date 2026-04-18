@@ -555,6 +555,85 @@ describe("evaluateLines", () => {
     });
   });
 
+  describe("units", () => {
+    it("multiplies a unit by a scalar", () => {
+      const results = evaluateLines(["350 cm * 3"]);
+      expect(results[0].value).toBe(10.5);
+      // mathjs auto-scales cm → m when crossing prefix thresholds.
+      expect(results[0].display).toBe("10.5 m");
+    });
+
+    it("assigns a unit expression", () => {
+      const results = evaluateLines(["volume = 30 m^2 * 15 m"]);
+      expect(results[0].value).toBe(450);
+      expect(results[0].display).toBe("450 m^3");
+      expect(results[0].isAssignment).toBe(true);
+    });
+
+    it("reuses a unit variable in a later expression", () => {
+      const results = evaluateLines(["volume = 30 m^2 * 15 m", "volume / 2"]);
+      expect(results[1].value).toBe(225);
+      expect(results[1].display).toBe("225 m^3");
+    });
+
+    it("converts units with `to`", () => {
+      const results = evaluateLines(["600 sec to min"]);
+      expect(results[0].value).toBe(10);
+      expect(results[0].display).toBe("10 minutes");
+    });
+
+    it("converts units with `as`", () => {
+      const results = evaluateLines(["30 sec as minutes"]);
+      expect(results[0].value).toBe(0.5);
+      expect(results[0].display).toBe("0.5 minutes");
+    });
+
+    it("converts to percent with `as %`", () => {
+      const results = evaluateLines(["0.5 as %"]);
+      expect(results[0].value).toBe(50);
+      expect(results[0].display).toBe("50%");
+    });
+
+    it("converts to percent with `to %`", () => {
+      const results = evaluateLines(["0.25 to %"]);
+      expect(results[0].value).toBe(25);
+      expect(results[0].display).toBe("25%");
+    });
+
+    it("converts to percent with the word `percent`", () => {
+      const results = evaluateLines(["0.75 as percent"]);
+      expect(results[0].display).toBe("75%");
+    });
+
+    it("surfaces an error on mismatched units", () => {
+      const results = evaluateLines(["600 sec to kg"]);
+      expect(results[0].value).toBe(null);
+      expect(results[0].error).toMatch(/unit/i);
+    });
+
+    it("keeps incomplete input silent", () => {
+      const results = evaluateLines(["1 +"]);
+      expect(results[0].value).toBe(null);
+      expect(results[0].error).toBe(null);
+      expect(results[0].display).toBe("");
+    });
+
+    it("applies thousand separators to unit magnitudes", () => {
+      const results = evaluateLines(["12345 inch"]);
+      expect(results[0].display).toBe("12,345 inch");
+    });
+
+    it("preserves the secant function when followed by parentheses", () => {
+      const results = evaluateLines(["sec(0)"]);
+      expect(results[0].value).toBeCloseTo(1);
+    });
+
+    it("preserves the minimum function when followed by parentheses", () => {
+      const results = evaluateLines(["min(3, 7, 2)"]);
+      expect(results[0].value).toBe(2);
+    });
+  });
+
   describe("display formatting", () => {
     it("formats integers with thousand separators", () => {
       const results = evaluateLines(["1000000"]);

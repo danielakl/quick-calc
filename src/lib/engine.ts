@@ -3,10 +3,11 @@ import {
   all,
   isConstantNode,
   isSymbolNode,
+  isUnit,
   type SymbolNode,
   type MathNode,
 } from "mathjs";
-import { formatNumber } from "./formatter";
+import { formatNumber, formatUnit, extractUnitMagnitude } from "./formatter";
 import { createIntegral } from "./integral";
 import {
   isUserFunc,
@@ -100,8 +101,10 @@ const SCOPE_FUNCTIONS: Record<string, unknown> = Object.fromEntries(
 const ASSIGNMENT_RE = /^\s*([\p{L}_][\p{L}\p{N}_]*)\s*=/u;
 /** Matches lines that are comments (// or #), including indented ones. */
 const COMMENT_RE = /^\s*(\/\/|#)/;
-/** Variables injected by the engine — excluded from the "default to 1" logic. */
+/** Engine-injected variables referenced by name during free-var analysis. */
 const BUILTIN_VARS = new Set(["prev", "sum", "average"]);
+/** Trailing "to %" / "as %" / "to percent" / "as percent" conversion. */
+const PERCENT_CONVERT_RE = /^(.+?)\s+(?:to|as)\s+(?:%|percent)\s*$/i;
 const mathNamespace = math as unknown as Record<string, unknown>;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -119,8 +122,17 @@ function isBuiltinFunction(name: string): boolean {
   return typeof mathNamespace[name] === "function";
 }
 
+const UnitCtor = math.Unit as unknown as {
+  isValuelessUnit(name: string): boolean;
+};
+
+/** Check whether a name is a recognized mathjs unit (e.g. "cm", "m", "sec"). */
+function isUnitName(name: string): boolean {
+  return UnitCtor.isValuelessUnit(name);
+}
+
 /** Collect unique free variables from a node — symbols not in scope, not in
- *  the mathjs namespace, and not engine builtins. */
+ *  the mathjs namespace, not engine builtins, and not mathjs unit names. */
 function collectFreeVars(
   node: MathNode,
   scope: Record<string, unknown>,
@@ -135,6 +147,7 @@ function collectFreeVars(
       !(name in scope) &&
       !(name in mathNamespace) &&
       !BUILTIN_VARS.has(name) &&
+      !isUnitName(name) &&
       !exclude?.has(name)
     ) {
       freeVars.push(name);
@@ -179,7 +192,16 @@ function mapResult(
       isAssignment,
     };
   }
-  // mathjs BigNumber, Fraction, or Unit — coerce to plain number.
+  // mathjs Unit — preserve the unit in the display string.
+  if (isUnit(result)) {
+    return {
+      value: extractUnitMagnitude(result),
+      display: formatUnit(result),
+      error: null,
+      isAssignment,
+    };
+  }
+  // mathjs BigNumber or Fraction — coerce to plain number.
   if (isCoercibleNumeric(result)) {
     const num = Number(result);
     return {
@@ -387,6 +409,17 @@ export function evaluateLines(lines: string[]): LineResult[] {
       continue;
     }
 
+    // Preprocess: capture trailing percent conversion, translate `as` into
+    // mathjs's `to` conversion keyword, and rewrite `sec`/`min` (which mathjs
+    // parses as the secant/minimum functions) to their full unit names when
+    // not followed by `(`. This lets users write "600 sec to min" naturally.
+    const pctMatch = trimmed.match(PERCENT_CONVERT_RE);
+    const isPercentConvert = !!pctMatch;
+    const processed = (pctMatch ? pctMatch[1] : trimmed)
+      .replace(/\s+as\s+/g, " to ")
+      .replace(/\bsec\b(?!\s*\()/g, "seconds")
+      .replace(/\bmin\b(?!\s*\()/g, "minutes");
+
     // Inject engine-managed variables.
     // prev is only available after at least one numeric result.
     // sum and average are only available after at least one numeric result.
@@ -410,8 +443,14 @@ export function evaluateLines(lines: string[]): LineResult[] {
       }
     }
 
+    const applyPercent = (r: LineResult): LineResult => {
+      if (!isPercentConvert || r.value === null) return r;
+      const pct = r.value * 100;
+      return { ...r, value: pct, display: `${formatNumber(pct)}%` };
+    };
+
     try {
-      const node = math.parse(trimmed);
+      const node = math.parse(processed);
 
       // Guard function assignment to built-in functions (e.g. sin(x) = x).
       if (isFuncAssignNode(node) && isBuiltinFunction(node.name)) {
@@ -438,10 +477,8 @@ export function evaluateLines(lines: string[]): LineResult[] {
           } else {
             result = processCalculusCall(node as FnCallNode, scope);
           }
-          const lineResult = mapResult(
-            result,
-            calcIsAssignment || isAssignment,
-            false,
+          const lineResult = applyPercent(
+            mapResult(result, calcIsAssignment || isAssignment, false),
           );
           if (lineResult.value !== null) {
             prevValue = lineResult.value;
@@ -456,7 +493,7 @@ export function evaluateLines(lines: string[]): LineResult[] {
 
       // Simplified function declaration: `name = expr` where expr has free
       // variables. e.g. "func = x^2 + 5" creates a callable function with
-      // parameter x. Intercepted before default-to-1 and evaluate.
+      // parameter x.
       if (isAssignNode(node)) {
         const freeVars = collectFreeVars(node.value, scope);
         if (freeVars.length > 0) {
@@ -487,10 +524,8 @@ export function evaluateLines(lines: string[]): LineResult[] {
         fn.__params = [...node.params];
       }
 
-      const lineResult = mapResult(
-        result,
-        isAssignment,
-        isFuncAssignNode(node),
+      const lineResult = applyPercent(
+        mapResult(result, isAssignment, isFuncAssignNode(node)),
       );
 
       // Track numeric values for prev/sum/average.
@@ -500,10 +535,16 @@ export function evaluateLines(lines: string[]): LineResult[] {
       }
 
       results.push(lineResult);
-    } catch {
-      // Silently discard parse/evaluation errors (e.g. incomplete "1 +")
-      // so the user can keep typing without disruptive error states.
-      results.push(emptyResult());
+    } catch (e) {
+      // Surface unit-related errors (mismatches, conversions). Parse errors
+      // from incomplete input and undefined-symbol errors stay silent so the
+      // user can keep typing without disruptive error states.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/unit/i.test(msg)) {
+        results.push(errorResult(msg));
+      } else {
+        results.push(emptyResult());
+      }
     }
   }
 
