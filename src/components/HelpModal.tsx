@@ -6,16 +6,29 @@ import { evaluateLines } from "@/lib/engine";
 import CloseIcon from "./icons/CloseIcon";
 import HelpIcon from "./icons/HelpIcon";
 
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-block rounded-sm bg-accent-dim px-1.5 py-0.5 text-xs font-medium text-accent">
+      {children}
+    </span>
+  );
+}
+
 function Section({
   title,
+  tag,
   children,
 }: {
   title: string;
+  tag?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="mb-2 flex items-center gap-4 text-sm font-semibold text-foreground">
+        {title}
+        {tag}
+      </h3>
       <div className="space-y-1 text-sm text-muted">{children}</div>
     </div>
   );
@@ -244,7 +257,7 @@ export default function HelpModal() {
                   </div>
                 </Section>
 
-                <Section title="Integrals">
+                <Section title="Integrals" tag={<Tag>Beta</Tag>}>
                   <p>
                     Compute the antiderivative with{" "}
                     <code className="font-mono text-foreground">integrate</code>
