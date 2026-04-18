@@ -95,7 +95,7 @@ export default function HelpModal() {
           >
             <div
               data-testid="help-modal"
-              className="mx-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-surface p-6 shadow-lg"
+              className="mx-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-surface p-6 shadow-lg sm:max-w-4xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-5 flex items-center justify-between">
@@ -106,7 +106,7 @@ export default function HelpModal() {
                   data-testid="help-close"
                   onClick={close}
                   aria-label="Close help"
-                  className="cursor-pointer rounded-md p-1 text-muted transition-colors duration-150 ease-in-out hover:bg-surface-alt hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background active:scale-[0.98]"
+                  className="cursor-pointer rounded-md p-2 text-muted transition-colors duration-150 ease-in-out hover:bg-surface-alt hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background active:scale-[0.98]"
                 >
                   <CloseIcon />
                 </button>
