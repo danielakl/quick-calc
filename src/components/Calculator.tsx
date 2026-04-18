@@ -86,6 +86,7 @@ export default function Calculator() {
           data-testid="calc-input"
           ref={textareaRef}
           value={text}
+          autoCapitalize="off"
           onChange={(e) => setText(e.target.value)}
           onScroll={handleScroll}
           onFocus={() => setPreviewMode(true)}
