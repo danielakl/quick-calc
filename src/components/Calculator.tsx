@@ -102,13 +102,9 @@ export default function Calculator() {
       {/* Results panel — overlay on mobile, in-flow on desktop */}
       <div
         onClick={() => previewMode && setPreviewMode(false)}
-        className={`flex overflow-hidden bg-background transition-[width,opacity] duration-300 ease-in-out ${
-          hasResults
-            ? previewMode
-              ? "w-[30%] opacity-100"
-              : "absolute right-0 top-0 bottom-0 w-4/5 opacity-100"
-            : "w-0 opacity-0"
-        } ${hasResults ? "sm:relative sm:inset-auto sm:w-[35%] sm:opacity-100" : "sm:w-0 sm:opacity-0"}`}
+        className={`flex sm:relative sm:inset-auto overflow-hidden bg-background transition-[width,opacity] duration-300 ease-in-out ${
+          previewMode ? "w-[30%]" : "absolute right-0 top-0 bottom-0 w-4/5"
+        }`}
       >
         <div className="w-px shrink-0 bg-border" />
         <div
