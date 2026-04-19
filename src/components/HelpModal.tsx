@@ -43,21 +43,32 @@ interface ExampleLine {
 function ExampleGroup({ lines }: { lines: ExampleLine[] }) {
   const results = evaluateLines(lines.map((l) => l.input));
   return (
-    <>
-      {lines.map((line, i) => {
-        const display = line.result ?? (results[i].display || undefined);
-        return (
-          <div key={i} className="flex items-baseline gap-3 font-mono text-xs">
-            <code className="text-foreground">{line.input}</code>
-            {display && (
-              <span className="text-accent-dim">
-                {"\u2192"} {display}
-              </span>
-            )}
+    <div className="flex max-w-xl font-mono text-xs p-2 rounded-lg border-border border">
+      <div className="min-w-0 flex-1 space-y-0.5">
+        {lines.map((line, i) => (
+          <div key={i} className="truncate text-foreground">
+            {line.input}
           </div>
-        );
-      })}
-    </>
+        ))}
+      </div>
+      <div className="mx-3 w-px shrink-0 bg-border" />
+      <div className="min-w-0 flex-1 space-y-0.5 text-right">
+        {lines.map((line, i) => {
+          const display = line.result ?? (results[i].display || undefined);
+          const isAssignment = results[i].isAssignment;
+          return (
+            <div
+              key={i}
+              className={`truncate ${
+                isAssignment ? "text-accent-dim" : "text-accent"
+              }`}
+            >
+              {display ?? "\u00A0"}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
