@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  useSyncExternalStore,
-} from "react";
+import { useState, useRef, useCallback, useEffect, useSyncExternalStore } from "react";
 import { useCalcStore, initFromURL } from "@/stores/useCalcStore";
 import { initTheme } from "@/stores/useThemeStore";
 import HelpModal from "./HelpModal";
@@ -33,8 +27,7 @@ export default function Calculator() {
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
     const source = e.currentTarget;
-    const target =
-      source === textareaRef.current ? resultsRef.current : textareaRef.current;
+    const target = source === textareaRef.current ? resultsRef.current : textareaRef.current;
     if (target) {
       target.scrollTop = source.scrollTop;
     }
@@ -64,60 +57,59 @@ export default function Calculator() {
     }
   }, [hasResults]);
 
-  if (!hydrated) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-muted font-sans text-sm">Loading...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="relative flex h-screen bg-background font-sans">
-      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-end bg-background/30 px-6 py-3 backdrop-blur-xs">
-        <HelpModal />
-        <ThemeToggle />
-      </header>
+    <div className="flex h-screen flex-col bg-background font-sans">
+      {hydrated ? (
+        <>
+          <header className="flex justify-end px-6 py-3">
+            <HelpModal />
+            <ThemeToggle />
+          </header>
 
-      {/* Input area */}
-      <div className="relative min-w-0 flex-1">
-        <textarea
-          id="calc-input"
-          data-testid="calc-input"
-          ref={textareaRef}
-          value={text}
-          autoCapitalize="off"
-          onChange={(e) => setText(e.target.value)}
-          onScroll={handleScroll}
-          onFocus={() => setPreviewMode(true)}
-          className="hide-scrollbar absolute inset-0 h-full w-full overflow-x-auto overflow-y-scroll whitespace-nowrap bg-transparent px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-base leading-6 text-foreground caret-caret selection:bg-selection transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
-          placeholder="Type an expression..."
-          aria-label="Calculator input"
-          wrap="off"
-          spellCheck={false}
-          autoFocus
-        />
-      </div>
+          <div className="flex min-h-0 flex-1 gap-2 p-2">
+            {/* Input area */}
+            <div className="min-w-0 flex-1">
+              <textarea
+                id="calc-input"
+                data-testid="calc-input"
+                ref={textareaRef}
+                value={text}
+                autoCapitalize="off"
+                onChange={(e) => setText(e.target.value)}
+                onScroll={handleScroll}
+                onFocus={() => setPreviewMode(true)}
+                className="rounded-md hide-scrollbar h-full w-full overflow-x-auto overflow-y-scroll whitespace-nowrap bg-transparent p-6 font-mono text-base leading-6 text-foreground caret-caret selection:bg-selection transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
+                placeholder="Type an expression..."
+                aria-label="Calculator input"
+                wrap="off"
+                spellCheck={false}
+                autoFocus
+              />
+            </div>
 
-      {/* Results panel — overlay on mobile, in-flow on desktop */}
-      <div
-        onClick={() => previewMode && setPreviewMode(false)}
-        className={`flex sm:relative sm:inset-auto overflow-hidden bg-background transition-[width,opacity] duration-300 ease-in-out ${
-          previewMode ? "w-[30%]" : "absolute right-0 top-0 bottom-0 w-4/5"
-        }`}
-      >
-        <div className="w-px shrink-0 bg-border" />
-        <div
-          ref={resultsRef}
-          data-testid="calc-results"
-          className="min-w-0 flex-1 overflow-y-auto px-6 pb-6 pt-[calc(0.75rem*2+2.25rem)] font-mono text-base leading-6"
-          onScroll={handleScroll}
-        >
-          {paddedResults.map((result, i) => (
-            <ResultLine key={i} result={result} />
-          ))}
-        </div>
-      </div>
+            {/* Results panel — overlay on mobile, in-flow on desktop */}
+            <div
+              onClick={() => previewMode && setPreviewMode(false)}
+              className={`overflow-hidden border-l border-border transition-[width,opacity] duration-300 ease-in-out ${
+                previewMode ? "w-[30%]" : "w-4/5"
+              }`}
+            >
+              <div
+                ref={resultsRef}
+                data-testid="calc-results"
+                className="h-full overflow-y-auto p-6 font-mono text-base leading-6"
+                onScroll={handleScroll}
+              >
+                {paddedResults.map((result, i) => (
+                  <ResultLine key={i} result={result} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-muted m-auto text-sm">Loading...</div>
+      )}
     </div>
   );
 }
