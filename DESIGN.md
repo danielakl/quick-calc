@@ -8,23 +8,23 @@ Quick Calc supports **dark** (default) and **light** themes. Colors are defined 
 
 ### Dark Theme
 
-| Token                  | Value                      | Usage                               |
-| ---------------------- | -------------------------- | ----------------------------------- |
-| `--color-background`   | `#0c0a14`                  | Page background                     |
-| `--color-surface`      | `#161225`                  | Panels, cards, elevated areas       |
-| `--color-surface-alt`  | `#1e1a30`                  | Hover states on surfaces, dropdowns |
-| `--color-border`       | `#2d2640`                  | Dividers, input borders             |
-| `--color-border-focus` | `#8b5cf6`                  | Focused input borders               |
-| `--color-foreground`   | `#e8e4f0`                  | Primary text                        |
-| `--color-muted`        | `#9890a8`                  | Secondary text, placeholders        |
-| `--color-accent`       | `#8b5cf6`                  | Results, links, interactive cues    |
-| `--color-accent-hover` | `#a78bfa`                  | Accent hover state                  |
-| `--color-accent-dim`   | `rgba(139, 92, 246, 0.45)` | Assignment results, subtle accents  |
-| `--color-error`        | `#f87171`                  | Error text, invalid input           |
-| `--color-success`      | `#4ade80`                  | Success indicators                  |
-| `--color-warning`      | `#fbbf24`                  | Warnings                            |
-| `--color-caret`        | `#8b5cf6`                  | Text cursor in inputs               |
-| `--color-selection`    | `rgba(139, 92, 246, 0.2)`  | Text selection highlight            |
+| Token                  | Value                     | Usage                               |
+| ---------------------- | ------------------------- | ----------------------------------- |
+| `--color-background`   | `#0c0a14`                 | Page background                     |
+| `--color-surface`      | `#161225`                 | Panels, cards, elevated areas       |
+| `--color-surface-alt`  | `#1e1a30`                 | Hover states on surfaces, dropdowns |
+| `--color-border`       | `#2d2640`                 | Dividers, input borders             |
+| `--color-border-focus` | `#8b5cf6`                 | Focused input borders               |
+| `--color-foreground`   | `#e8e4f0`                 | Primary text                        |
+| `--color-muted`        | `#9890a8`                 | Secondary text, placeholders        |
+| `--color-accent`       | `#8b5cf6`                 | Results, links, interactive cues    |
+| `--color-accent-hover` | `#a78bfa`                 | Accent hover state                  |
+| `--color-accent-dim`   | `#b9a4e8`                 | Assignment results, subtle accents  |
+| `--color-error`        | `#f87171`                 | Error text, invalid input           |
+| `--color-success`      | `#4ade80`                 | Success indicators                  |
+| `--color-warning`      | `#fbbf24`                 | Warnings                            |
+| `--color-caret`        | `#8b5cf6`                 | Text cursor in inputs               |
+| `--color-selection`    | `rgba(139, 92, 246, 0.2)` | Text selection highlight            |
 
 ### Light Theme
 
@@ -39,7 +39,7 @@ Quick Calc supports **dark** (default) and **light** themes. Colors are defined 
 | `--color-muted`        | `#6e6960`                  | Secondary text, placeholders       |
 | `--color-accent`       | `#7c3aed`                  | Results, links, interactive cues   |
 | `--color-accent-hover` | `#6d28d9`                  | Accent hover state                 |
-| `--color-accent-dim`   | `rgba(124, 58, 237, 0.4)`  | Assignment results, subtle accents |
+| `--color-accent-dim`   | `#6b4aa8`                  | Assignment results, subtle accents |
 | `--color-error`        | `#cc2626`                  | Error text                         |
 | `--color-success`      | `#0d7a3a`                  | Success indicators                 |
 | `--color-warning`      | `#a84b08`                  | Warnings                           |

@@ -17,7 +17,7 @@
   --color-muted: #9890a8;
   --color-accent: #8b5cf6;
   --color-accent-hover: #a78bfa;
-  --color-accent-dim: rgba(139, 92, 246, 0.45);
+  --color-accent-dim: #b9a4e8;
   --color-error: #f87171;
   --color-success: #4ade80;
   --color-warning: #fbbf24;
@@ -57,7 +57,7 @@ html[data-theme="light"] {
   --color-muted: #6e6960;
   --color-accent: #7c3aed;
   --color-accent-hover: #6d28d9;
-  --color-accent-dim: rgba(124, 58, 237, 0.4);
+  --color-accent-dim: #6b4aa8;
   --color-error: #cc2626;
   --color-success: #0d7a3a;
   --color-warning: #a84b08;
