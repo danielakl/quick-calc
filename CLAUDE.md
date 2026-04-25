@@ -5,7 +5,7 @@ Notepad-style calculator web app. Users type math expressions (one per line) and
 ## Stack
 
 - **Framework:** Next.js 16 (App Router), React 19, TypeScript
-- **Styling:** Tailwind CSS 4, Inter (UI) + JetBrains Mono (calculator) fonts
+- **Styling:** Tailwind CSS 4, Space Grotesk (UI) + Space Mono (calculator) fonts, self-hosted via `next/font/local`
 - **Design:** See `DESIGN.md` for colors, typography, spacing, and theming guidelines
 - **State:** Zustand — stores at `src/stores/` (useCalcStore.ts, useThemeStore.ts)
 - **Math engine:** mathjs — evaluation in `src/lib/engine.ts`

@@ -1,16 +1,26 @@
-import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import Script from "next/script";
 import type { Metadata } from "next";
 import "./globals.css";
 
-const inter = Inter({
+const spaceGrotesk = localFont({
+  src: "./fonts/SpaceGrotesk-Variable.woff2",
   variable: "--font-sans",
-  subsets: ["latin"],
+  weight: "300 700",
+  style: "normal",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+  adjustFontFallback: "Arial",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const spaceMono = localFont({
+  src: "./fonts/SpaceMono-Regular.woff2",
   variable: "--font-mono",
-  subsets: ["latin"],
+  weight: "400",
+  style: "normal",
+  display: "swap",
+  fallback: ["ui-monospace", "Menlo", "Consolas", "monospace"],
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
@@ -24,10 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full`}
-    >
+    <html lang="en" className={`${spaceGrotesk.variable} ${spaceMono.variable} h-full`}>
       <body className="h-full">
         <Script src="/theme-init.js" strategy="beforeInteractive" />
         {children}

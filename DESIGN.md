@@ -70,12 +70,12 @@ Quick Calc uses **two font families**: a proportional font for UI chrome and a m
 
 ### Font Families
 
-| Role           | Font           | CSS Variable  | Fallback          | Usage                                 |
-| -------------- | -------------- | ------------- | ----------------- | ------------------------------------- |
-| **UI**         | Inter          | `--font-sans` | `system-ui, sans` | Header, buttons, labels, tooltips, UI |
-| **Calculator** | JetBrains Mono | `--font-mono` | `monospace`       | Textarea input, result lines, code    |
+| Role           | Font          | CSS Variable  | Fallback                  | Usage                                 |
+| -------------- | ------------- | ------------- | ------------------------- | ------------------------------------- |
+| **UI**         | Space Grotesk | `--font-sans` | `system-ui, sans-serif`   | Header, buttons, labels, tooltips, UI |
+| **Calculator** | Space Mono    | `--font-mono` | `ui-monospace, monospace` | Textarea input, result lines, code    |
 
-Load both via `next/font/google` in `layout.tsx` and expose as CSS variables.
+Load both via `next/font/local` in `layout.tsx` from `src/app/fonts/` (self-hosted for build stability and a minimal payload). Space Grotesk ships as a single variable font with a `wght` axis 300–700 that covers regular/medium/semibold; Space Mono ships only Regular 400 since bold (700+) is forbidden and italics are unused.
 
 ### Type Scale
 
