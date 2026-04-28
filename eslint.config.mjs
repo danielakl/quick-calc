@@ -12,21 +12,22 @@ const eslintConfig = defineConfig([
   importXConfigs.typescript,
   {
     rules: {
+      curly: ["error", "all"],
       "import-x/order": [
         "warn",
         {
-          groups: [
-            "builtin",
-            "external",
-            "internal",
-            ["parent", "sibling", "index"],
-            "type",
-          ],
-          pathGroups: [
-            { pattern: "@/**", group: "internal", position: "before" },
-          ],
+          groups: ["builtin", "external", "internal", ["parent", "sibling", "index"], "type"],
+          pathGroups: [{ pattern: "@/**", group: "internal", position: "before" }],
           "newlines-between": "never",
           alphabetize: { order: "asc", caseInsensitive: false },
+        },
+      ],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
         },
       ],
     },
