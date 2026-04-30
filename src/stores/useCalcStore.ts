@@ -37,7 +37,7 @@ function readTextFromURL(): string {
 export const useCalcStore = create<CalcState>()((set) => ({
   text: "",
   setText: (text: string) => {
-    set({ text: sanitize(text) ?? "" });
+    set({ text });
     updateURL(text);
   },
 }));
