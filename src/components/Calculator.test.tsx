@@ -1,4 +1,4 @@
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, beforeEach } from "vitest";
 import { useCalcStore } from "@/stores/useCalcStore";
@@ -51,6 +51,68 @@ describe("Calculator", () => {
     useCalcStore.getState().setText("7 * 8");
     await waitFor(() => {
       expect(screen.getAllByText("56").length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("scroll synchronisation", () => {
+    it("propagates textarea scrollTop to the results panel", () => {
+      useCalcStore.getState().setText("1\n2\n3\n4\n5");
+      render(<Calculator />);
+      const textarea = screen.getByTestId("calc-input") as HTMLTextAreaElement;
+      const results = screen.getByTestId("calc-results") as HTMLDivElement;
+
+      textarea.scrollTop = 42;
+      fireEvent.scroll(textarea);
+
+      expect(results.scrollTop).toBe(42);
+    });
+
+    it("propagates results-panel scrollTop back to the textarea", () => {
+      useCalcStore.getState().setText("1\n2\n3\n4\n5");
+      render(<Calculator />);
+      const textarea = screen.getByTestId("calc-input") as HTMLTextAreaElement;
+      const results = screen.getByTestId("calc-results") as HTMLDivElement;
+
+      results.scrollTop = 17;
+      fireEvent.scroll(results);
+
+      expect(textarea.scrollTop).toBe(17);
+    });
+  });
+
+  describe("preview mode", () => {
+    it("starts in preview mode (results panel is narrow)", () => {
+      useCalcStore.getState().setText("1 + 1");
+      render(<Calculator />);
+      const panel = screen.getByTestId("calc-results").parentElement!;
+      expect(panel.className).toMatch(/w-\[30%\]/);
+      expect(panel.className).not.toMatch(/w-4\/5/);
+    });
+
+    it("expands results panel when clicked in preview mode", async () => {
+      const user = userEvent.setup();
+      useCalcStore.getState().setText("1 + 1");
+      render(<Calculator />);
+      const panel = screen.getByTestId("calc-results").parentElement!;
+
+      await user.click(panel);
+      expect(panel.className).toMatch(/w-4\/5/);
+      expect(panel.className).not.toMatch(/w-\[30%\]/);
+    });
+
+    it("returns to preview mode when the textarea is focused again", async () => {
+      const user = userEvent.setup();
+      useCalcStore.getState().setText("1 + 1");
+      render(<Calculator />);
+      const panel = screen.getByTestId("calc-results").parentElement!;
+      const textarea = screen.getByTestId("calc-input") as HTMLTextAreaElement;
+
+      await user.click(panel);
+      expect(panel.className).toMatch(/w-4\/5/);
+
+      textarea.blur();
+      await user.click(textarea);
+      expect(panel.className).toMatch(/w-\[30%\]/);
     });
   });
 });

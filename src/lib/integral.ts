@@ -335,10 +335,6 @@ export function createIntegral(
       const name = fNode.fn && "name" in fNode.fn ? (fNode.fn as SymbolNode).name : "";
       const arg = fNode.args[0];
 
-      if (!arg) {
-        throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
-      }
-
       // Linear substitution factor: if arg = ax+b, divide result by a
       const lin = extractLinear(arg, v);
       const chainDiv = lin && lin.a !== 1 ? lin.a : null;

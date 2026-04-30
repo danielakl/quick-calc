@@ -210,6 +210,82 @@ describe("createIntegral", () => {
     it("throws for unsupported function", () => {
       expect(() => integral("gamma(x)", "x")).toThrow(/Cannot compute integral/);
     });
+
+    it("throws when both factors of a product depend on the variable", () => {
+      // Hits the multiplication "both depend on variable" branch.
+      expect(() => integral("x * x", "x")).toThrow(/Cannot compute integral/);
+    });
+
+    it("throws for variable exponent on variable base", () => {
+      // x^(x+1): both base and exponent are variable.
+      expect(() => integral("x^(x + 1)", "x")).toThrow(/Cannot compute integral/);
+    });
+
+    it("throws for f(x) / g(x) with non-linear divisor", () => {
+      // 1 / (x^2) — divisor depends on x but is not linear.
+      expect(() => integral("1 / (x^2 + 1)", "x")).toThrow(/Cannot compute integral/);
+    });
+
+    it("throws for trig of a non-linear argument", () => {
+      // sin(x^2) — argument is not linear.
+      expect(() => integral("sin(x^2)", "x")).toThrow(/Cannot compute integral/);
+    });
+
+    it("throws for constant base raised to a non-linear exponent", () => {
+      // 2^(x^2) — exponent is not linear in x.
+      expect(() => integral("2^(x^2)", "x")).toThrow(/Cannot compute integral/);
+    });
+  });
+
+  describe("extractLinear edge branches", () => {
+    it("integrates c - x (variable on the right of subtract)", () => {
+      // ∫(5 - x) = 5x - x^2/2 → at x=2: 10 - 2 = 8
+      expect(evalAt("5 - x", "x", 2)).toBeCloseTo(8);
+    });
+
+    it("integrates -(2*x + 1) (unary minus around linear)", () => {
+      // ∫-(2x+1) = -(x^2 + x) → at x=3: -(9 + 3) = -12
+      expect(evalAt("-(2 * x + 1)", "x", 3)).toBeCloseTo(-12);
+    });
+
+    it("integrates x * 5 (variable on the left of multiply)", () => {
+      // ∫x*5 = 5*x^2/2 → at x=2: 10
+      expect(evalAt("x * 5", "x", 2)).toBeCloseTo(10);
+    });
+
+    it("integrates (3 + x) — variable on the right of add", () => {
+      // ∫(3 + x) = 3x + x^2/2 → at x=4: 12 + 8 = 20
+      expect(evalAt("3 + x", "x", 4)).toBeCloseTo(20);
+    });
+  });
+
+  describe("c / linear and (ax+b)^(-1)", () => {
+    it("integrates 1 / (2*x + 1) as log(2x+1) / 2", () => {
+      // ∫1/(2x+1) = log(2x+1)/2 → at x=0: log(1)/2 = 0
+      expect(evalAt("1 / (2 * x + 1)", "x", 0)).toBeCloseTo(0);
+      // at x=(e-1)/2: log(e)/2 = 0.5
+      expect(evalAt("1 / (2 * x + 1)", "x", (Math.E - 1) / 2)).toBeCloseTo(0.5);
+    });
+
+    it("integrates 6 / (3*x + 1) as 2 * log(3x+1)", () => {
+      // ∫6/(3x+1) = (6/3)*log(3x+1) = 2*log(3x+1) → at x=0: 0
+      expect(evalAt("6 / (3 * x + 1)", "x", 0)).toBeCloseTo(0);
+    });
+
+    it("integrates (2*x + 1)^(-1) as log(2x+1)/2", () => {
+      // ∫(2x+1)^(-1) = log(2x+1)/2 → at x=0: 0
+      expect(evalAt("(2 * x + 1)^(-1)", "x", 0)).toBeCloseTo(0);
+    });
+  });
+
+  describe("symbolic exponent on bare variable", () => {
+    it("integrates x^a for symbolic a using the symbolic power rule", () => {
+      // The "non-numeric constant exponent" branch at integral.ts:308-310:
+      // ∫x^a = x^(a+1) / (a+1). At x=1, the result evaluates to 1/(a+1) for any a.
+      const node = integral("x^a", "x");
+      expect(node.compile().evaluate({ x: 1, a: 4 })).toBeCloseTo(1 / 5);
+      expect(node.compile().evaluate({ x: 2, a: 3 })).toBeCloseTo(2 ** 4 / 4);
+    });
   });
 
   describe("simplification", () => {
