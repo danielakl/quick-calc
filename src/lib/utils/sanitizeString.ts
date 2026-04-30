@@ -114,7 +114,7 @@ export function sanitize(
   // Set default options.
   options.collapseWhitespace ??= false;
   options.form ??= "NFC";
-  options.maxLength ??= 1_000_000;
+  options.maxLength ??= 50_000;
   options.removeLineEndings ??= false;
   options.stripEmoji ??= false;
   options.truncationSuffix ??= "…";
