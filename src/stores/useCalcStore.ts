@@ -1,57 +1,43 @@
-import {
-  compressToEncodedURIComponent,
-  decompressFromEncodedURIComponent,
-} from "lz-string";
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 import { create } from "zustand";
-import { evaluateLines, LineResult } from "@/lib/engine";
+import { sanitize } from "@/lib/utils/sanitizeString";
+import { isEmpty } from "@/lib/utils/stringUtils";
 
 interface CalcState {
   text: string;
-  results: LineResult[];
   setText: (text: string) => void;
-}
-
-function sanitize(raw: string): string {
-  return (
-    raw
-      // Normalize newlines
-      .replace(/\r\n?/g, "\n")
-      .normalize("NFC")
-      // Strip unpaired UTF-16 surrogates
-      .replace(
-        /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
-        "",
-      )
-      .trim()
-  );
 }
 
 function updateURL(text: string) {
   const url = new URL(window.location.href);
-  if (text) {
+  if (!isEmpty(text)) {
     url.searchParams.set("q", compressToEncodedURIComponent(text));
   } else {
     url.searchParams.delete("q");
   }
+
   window.history.replaceState(null, "", url);
 }
 
 function readTextFromURL(): string {
   const url = new URL(window.location.href);
   const compressed = url.searchParams.get("q");
-  if (!compressed) return "";
+  if (isEmpty(compressed)) {
+    return "";
+  }
+
   const decompressed = decompressFromEncodedURIComponent(compressed);
-  if (!decompressed) return "";
-  return sanitize(decompressed);
+  if (isEmpty(decompressed)) {
+    return "";
+  }
+
+  return sanitize(decompressed) ?? "";
 }
 
 export const useCalcStore = create<CalcState>()((set) => ({
   text: "",
-  results: [],
   setText: (text: string) => {
-    const lines = text.split("\n");
-    const results = evaluateLines(lines);
-    set({ text, results });
+    set({ text: sanitize(text) ?? "" });
     updateURL(text);
   },
 }));

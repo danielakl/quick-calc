@@ -17,23 +17,29 @@ import {
 
 /** Check whether a subtree is constant with respect to `varName`. */
 function isConst(node: MathNode, varName: string): boolean {
-  if (isConstantNode(node)) return true;
-  if (isSymbolNode(node)) return (node as SymbolNode).name !== varName;
-  if (isParenthesisNode(node))
+  if (isConstantNode(node)) {
+    return true;
+  }
+  if (isSymbolNode(node)) {
+    return (node as SymbolNode).name !== varName;
+  }
+  if (isParenthesisNode(node)) {
     return isConst((node as ParenthesisNode).content, varName);
+  }
   if (isOperatorNode(node) || isFunctionNode(node)) {
-    return (node as OperatorNode | FunctionNode).args.every((a) =>
-      isConst(a, varName),
-    );
+    return (node as OperatorNode | FunctionNode).args.every((a) => isConst(a, varName));
   }
   return false;
 }
 
 /** Evaluate a constant-only AST node to a numeric value. */
 function constValue(node: MathNode): number | null {
-  if (isConstantNode(node)) return (node as ConstantNode).value as number;
-  if (isParenthesisNode(node))
+  if (isConstantNode(node)) {
+    return (node as ConstantNode).value as number;
+  }
+  if (isParenthesisNode(node)) {
     return constValue((node as ParenthesisNode).content);
+  }
   if (isOperatorNode(node)) {
     const op = node as OperatorNode;
     if (op.fn === "unaryMinus" && op.args.length === 1) {
@@ -43,12 +49,24 @@ function constValue(node: MathNode): number | null {
     if (op.args.length === 2) {
       const l = constValue(op.args[0]);
       const r = constValue(op.args[1]);
-      if (l === null || r === null) return null;
-      if (op.fn === "add") return l + r;
-      if (op.fn === "subtract") return l - r;
-      if (op.fn === "multiply") return l * r;
-      if (op.fn === "divide") return r !== 0 ? l / r : null;
-      if (op.fn === "pow") return Math.pow(l, r);
+      if (l === null || r === null) {
+        return null;
+      }
+      if (op.fn === "add") {
+        return l + r;
+      }
+      if (op.fn === "subtract") {
+        return l - r;
+      }
+      if (op.fn === "multiply") {
+        return l * r;
+      }
+      if (op.fn === "divide") {
+        return r !== 0 ? l / r : null;
+      }
+      if (op.fn === "pow") {
+        return Math.pow(l, r);
+      }
     }
   }
   return null;
@@ -58,19 +76,20 @@ function constValue(node: MathNode): number | null {
  * Try to decompose a linear expression in `varName`: returns `{ a, b }` such
  * that `node = a * varName + b`, or `null` if the expression is not linear.
  */
-function extractLinear(
-  node: MathNode,
-  varName: string,
-): { a: number; b: number } | null {
+function extractLinear(node: MathNode, varName: string): { a: number; b: number } | null {
   // Pure variable: 1 * x + 0
-  if (isSymbolNode(node) && (node as SymbolNode).name === varName)
+  if (isSymbolNode(node) && (node as SymbolNode).name === varName) {
     return { a: 1, b: 0 };
+  }
 
   // Constant: 0 * x + c
-  if (isConst(node, varName)) return null;
+  if (isConst(node, varName)) {
+    return null;
+  }
 
-  if (isParenthesisNode(node))
+  if (isParenthesisNode(node)) {
     return extractLinear((node as ParenthesisNode).content, varName);
+  }
 
   if (isOperatorNode(node)) {
     const op = node as OperatorNode;
@@ -80,7 +99,9 @@ function extractLinear(
       const left = extractLinear(op.args[0], varName);
       const right = extractLinear(op.args[1], varName);
       // At least one side must involve the variable
-      if (left && right) return { a: left.a + right.a, b: left.b + right.b };
+      if (left && right) {
+        return { a: left.a + right.a, b: left.b + right.b };
+      }
       if (left && isConst(op.args[1], varName)) {
         const cv = constValue(op.args[1]);
         return cv !== null ? { a: left.a, b: left.b + cv } : null;
@@ -96,7 +117,9 @@ function extractLinear(
     if (op.fn === "subtract" && op.args.length === 2) {
       const left = extractLinear(op.args[0], varName);
       const right = extractLinear(op.args[1], varName);
-      if (left && right) return { a: left.a - right.a, b: left.b - right.b };
+      if (left && right) {
+        return { a: left.a - right.a, b: left.b - right.b };
+      }
       if (left && isConst(op.args[1], varName)) {
         const cv = constValue(op.args[1]);
         return cv !== null ? { a: left.a, b: left.b - cv } : null;
@@ -113,16 +136,12 @@ function extractLinear(
       if (isConst(op.args[0], varName)) {
         const cv = constValue(op.args[0]);
         const inner = extractLinear(op.args[1], varName);
-        return cv !== null && inner
-          ? { a: cv * inner.a, b: cv * inner.b }
-          : null;
+        return cv !== null && inner ? { a: cv * inner.a, b: cv * inner.b } : null;
       }
       if (isConst(op.args[1], varName)) {
         const cv = constValue(op.args[1]);
         const inner = extractLinear(op.args[0], varName);
-        return cv !== null && inner
-          ? { a: cv * inner.a, b: cv * inner.b }
-          : null;
+        return cv !== null && inner ? { a: cv * inner.a, b: cv * inner.b } : null;
       }
       return null;
     }
@@ -185,7 +204,9 @@ export function createIntegral(
    */
   function integrate(node: MathNode, v: string): MathNode {
     // ── Constant ──
-    if (isConst(node, v)) return mul(node.clone(), sym(v));
+    if (isConst(node, v)) {
+      return mul(node.clone(), sym(v));
+    }
 
     // ── Bare variable: x → x^2 / 2 ──
     if (isSymbolNode(node) && (node as SymbolNode).name === v) {
@@ -222,9 +243,7 @@ export function createIntegral(
           return mul(op.args[1].clone(), integrate(op.args[0], v));
         }
         // Both depend on variable — not supported
-        throw new Error(
-          `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-        );
+        throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
       }
 
       // Division: constant divisor, or c / f(x) patterns
@@ -245,15 +264,10 @@ export function createIntegral(
         if (isConst(op.args[0], v)) {
           const lin = extractLinear(op.args[1], v);
           if (lin && lin.a !== 0) {
-            return mul(
-              div(op.args[0].clone(), cn(lin.a)),
-              fn("log", [op.args[1].clone()]),
-            );
+            return mul(div(op.args[0].clone(), cn(lin.a)), fn("log", [op.args[1].clone()]));
           }
         }
-        throw new Error(
-          `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-        );
+        throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
       }
 
       // Power: x^n or f(x)^n patterns
@@ -275,9 +289,7 @@ export function createIntegral(
               mul(cn(lin.a), fn("log", [base.clone()])),
             );
           }
-          throw new Error(
-            `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-          );
+          throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
         }
 
         // x^n (variable base, constant exponent)
@@ -287,47 +299,44 @@ export function createIntegral(
           // x^n where n ≠ -1 → x^(n+1)/(n+1)
           // x^(-1) → log(x)
           if (isSymbolNode(base) && (base as SymbolNode).name === v) {
-            if (n === -1) return fn("log", [sym(v)]);
-            if (n !== null) return div(pow(sym(v), cn(n + 1)), cn(n + 1));
+            if (n === -1) {
+              return fn("log", [sym(v)]);
+            }
+            if (n !== null) {
+              return div(pow(sym(v), cn(n + 1)), cn(n + 1));
+            }
             // Non-numeric constant exponent: try symbolic
-            return div(
-              pow(sym(v), add(exponent.clone(), cn(1))),
-              add(exponent.clone(), cn(1)),
-            );
+            return div(pow(sym(v), add(exponent.clone(), cn(1))), add(exponent.clone(), cn(1)));
           }
 
           // (ax+b)^n → (ax+b)^(n+1) / (a*(n+1))
           const lin = extractLinear(base, v);
           if (lin && lin.a !== 0) {
-            if (n === -1) return div(fn("log", [base.clone()]), cn(lin.a));
-            if (n !== null)
+            if (n === -1) {
+              return div(fn("log", [base.clone()]), cn(lin.a));
+            }
+            if (n !== null) {
               return div(pow(base.clone(), cn(n + 1)), cn(lin.a * (n + 1)));
+            }
           }
 
-          throw new Error(
-            `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-          );
+          throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
         }
 
         // Both constant — handled by isConst check above
         // Both variable — not supported
-        throw new Error(
-          `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-        );
+        throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
       }
     }
 
     // ── Function nodes: trig, exp, log ──
     if (isFunctionNode(node)) {
       const fNode = node as FunctionNode;
-      const name =
-        fNode.fn && "name" in fNode.fn ? (fNode.fn as SymbolNode).name : "";
+      const name = fNode.fn && "name" in fNode.fn ? (fNode.fn as SymbolNode).name : "";
       const arg = fNode.args[0];
 
       if (!arg) {
-        throw new Error(
-          `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-        );
+        throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
       }
 
       // Linear substitution factor: if arg = ax+b, divide result by a
@@ -336,9 +345,7 @@ export function createIntegral(
 
       // Only proceed if arg is the variable or a linear expression in it
       if (!lin || lin.a === 0) {
-        throw new Error(
-          `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-        );
+        throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
       }
 
       let result: MathNode;
@@ -357,17 +364,11 @@ export function createIntegral(
           break;
         case "sec":
           // ∫sec(u) = log(sec(u) + tan(u))
-          result = fn("log", [
-            add(fn("sec", [arg.clone()]), fn("tan", [arg.clone()])),
-          ]);
+          result = fn("log", [add(fn("sec", [arg.clone()]), fn("tan", [arg.clone()]))]);
           break;
         case "csc":
           // ∫csc(u) = -log(csc(u) + cot(u))
-          result = neg(
-            fn("log", [
-              add(fn("csc", [arg.clone()]), fn("cot", [arg.clone()])),
-            ]),
-          );
+          result = neg(fn("log", [add(fn("csc", [arg.clone()]), fn("cot", [arg.clone()]))]));
           break;
         case "cot":
           // ∫cot(u) = log(sin(u))
@@ -382,27 +383,22 @@ export function createIntegral(
           result = sub(mul(arg.clone(), fn("log", [arg.clone()])), arg.clone());
           break;
         default:
-          throw new Error(
-            `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-          );
+          throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
       }
 
       // Apply linear substitution: divide by chain coefficient
-      if (chainDiv !== null) result = div(result, cn(chainDiv));
+      if (chainDiv !== null) {
+        result = div(result, cn(chainDiv));
+      }
       return result;
     }
 
-    throw new Error(
-      `Cannot compute integral of "${node.toString()}" with respect to "${v}"`,
-    );
+    throw new Error(`Cannot compute integral of "${node.toString()}" with respect to "${v}"`);
   }
 
   // ── Public API ──
 
-  return function computeIntegral(
-    expr: string | MathNode,
-    variable: string,
-  ): MathNode {
+  return function computeIntegral(expr: string | MathNode, variable: string): MathNode {
     const node = typeof expr === "string" ? math.parse(expr) : expr;
     const result = integrate(node, variable);
     return math.simplify(result) as MathNode;

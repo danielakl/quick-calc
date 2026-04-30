@@ -12,7 +12,6 @@ const eslintConfig = defineConfig([
   importXConfigs.typescript,
   {
     rules: {
-      curly: ["error", "all"],
       "import-x/order": [
         "warn",
         {
@@ -33,6 +32,13 @@ const eslintConfig = defineConfig([
     },
   },
   prettier,
+  // Rules placed after `prettier` so they aren't disabled by eslint-config-prettier.
+  // `curly: all` is safe — Prettier never strips braces.
+  {
+    rules: {
+      curly: ["error", "all"],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

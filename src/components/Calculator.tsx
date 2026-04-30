@@ -1,8 +1,14 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useSyncExternalStore } from "react";
-import { useCalcStore, initFromURL } from "@/stores/useCalcStore";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCurrencyRates } from "@/hooks/useCurrencyRates";
+import { useNow } from "@/hooks/useNow";
+import { evaluate } from "@/lib/engine";
+import { isEmpty } from "@/lib/utils/stringUtils";
+import { initFromURL, useCalcStore } from "@/stores/useCalcStore";
+import { initCurrencyStore } from "@/stores/useCurrencyStore";
 import { initTheme } from "@/stores/useThemeStore";
+import CurrencyStatus from "./CurrencyStatus";
 import HelpModal from "./HelpModal";
 import ResultLine from "./ResultLine";
 import ThemeToggle from "./ThemeToggle";
@@ -10,7 +16,9 @@ import ThemeToggle from "./ThemeToggle";
 const emptySubscribe = () => () => {};
 
 export default function Calculator() {
-  const { text, results, setText } = useCalcStore();
+  const { text, setText } = useCalcStore();
+  const ratesVersion = useCurrencyRates();
+  const now = useNow();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const [previewMode, setPreviewMode] = useState(true);
@@ -23,6 +31,7 @@ export default function Calculator() {
   useEffect(() => {
     initTheme();
     initFromURL();
+    initCurrencyStore();
   }, []);
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
@@ -33,26 +42,25 @@ export default function Calculator() {
     }
   }, []);
 
-  const lineCount = text.split("\n").length;
-  const hasResults = results.some((r) => r.display !== "" || r.error !== null);
-  const paddedResults = [
-    ...results,
-    ...Array(Math.max(0, lineCount - results.length)).fill({
-      value: null,
-      display: "",
-      error: null,
-      isAssignment: false,
-    }),
-  ];
+  // Re-evaluate when text changes OR when currency rates change. The engine
+  // reads mathjs-registered units at evaluation time, so a rates bump is all
+  // we need to refresh currency-bearing lines.
+  const results = useMemo(
+    () => evaluate(text),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [text, ratesVersion],
+  );
+
+  const hasResults = results.some((r) => !isEmpty(r.display) || !isEmpty(r.error));
 
   // Sync scroll position when results panel appears.
   // Uses rAF so the panel has its transitioned dimensions before we assign scrollTop.
   useEffect(() => {
     if (hasResults && textareaRef.current && resultsRef.current) {
       const textarea = textareaRef.current;
-      const results = resultsRef.current;
+      const resultsElement = resultsRef.current;
       requestAnimationFrame(() => {
-        results.scrollTop = textarea.scrollTop;
+        resultsElement.scrollTop = textarea.scrollTop;
       });
     }
   }, [hasResults]);
@@ -61,7 +69,8 @@ export default function Calculator() {
     <div className="flex h-screen flex-col bg-background font-sans">
       {hydrated ? (
         <>
-          <header className="flex justify-end px-6 py-3">
+          <header className="flex items-center justify-end gap-1 px-6 py-3">
+            <CurrencyStatus now={now} />
             <HelpModal />
             <ThemeToggle />
           </header>
@@ -100,7 +109,7 @@ export default function Calculator() {
                 className="h-full overflow-y-auto p-6 font-mono text-base leading-6"
                 onScroll={handleScroll}
               >
-                {paddedResults.map((result, i) => (
+                {results.map((result, i) => (
                   <ResultLine key={i} result={result} />
                 ))}
               </div>

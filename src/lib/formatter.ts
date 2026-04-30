@@ -1,11 +1,16 @@
+import { CURRENCY_SYMBOLS } from "./currencies";
 import type { Unit } from "mathjs";
 
 const UNIT_MAGNITUDE_RE = /^(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)(.*)$/i;
 
 export function formatNumber(value: number): string {
   if (!Number.isFinite(value)) {
-    if (value === Infinity) return "Infinity";
-    if (value === -Infinity) return "-Infinity";
+    if (value === Infinity) {
+      return "Infinity";
+    }
+    if (value === -Infinity) {
+      return "-Infinity";
+    }
     return "NaN";
   }
 
@@ -29,9 +34,21 @@ export function extractUnitMagnitude(unit: Unit): number {
 }
 
 /** Format a mathjs Unit using {@link formatNumber} for the magnitude so
- *  thousands separators and precision match plain-number formatting. */
+ *  thousands separators and precision match plain-number formatting.
+ *  When the unit is a known currency code (case-insensitive), substitute
+ *  the currency symbol — e.g. `8.9 GBP` → `8.9 £`. */
 export function formatUnit(unit: Unit): string {
   const match = unit.toString().match(UNIT_MAGNITUDE_RE);
-  if (!match) return unit.toString();
-  return formatNumber(Number(match[1])) + match[2];
+  if (!match) {
+    return unit.toString();
+  }
+  const magnitude = formatNumber(Number(match[1]));
+  const suffix = match[2];
+  const trimmedSuffix = suffix.trim();
+  const upperSuffix = trimmedSuffix.toUpperCase();
+  const symbol = CURRENCY_SYMBOLS[upperSuffix];
+  if (symbol) {
+    return `${magnitude} ${symbol}`;
+  }
+  return magnitude + suffix;
 }

@@ -10,7 +10,7 @@ beforeEach(() => {
 describe("HelpModal", () => {
   it("renders the help button with accessible label", () => {
     render(<HelpModal />);
-    const button = screen.getByTestId("help-open");
+    const button = screen.getByTestId("help-button");
     expect(button).toHaveAttribute("aria-label", "Open help");
   });
 
@@ -23,7 +23,7 @@ describe("HelpModal", () => {
     const user = userEvent.setup();
     render(<HelpModal />);
 
-    await user.click(screen.getByTestId("help-open"));
+    await user.click(screen.getByTestId("help-button"));
 
     expect(screen.getByTestId("help-modal")).toBeInTheDocument();
     expect(screen.getByText("Help")).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe("HelpModal", () => {
     const user = userEvent.setup();
     render(<HelpModal />);
 
-    await user.click(screen.getByTestId("help-open"));
+    await user.click(screen.getByTestId("help-button"));
     expect(screen.getByTestId("help-modal")).toBeInTheDocument();
 
     await user.click(screen.getByTestId("help-close"));
@@ -44,7 +44,7 @@ describe("HelpModal", () => {
     const user = userEvent.setup();
     render(<HelpModal />);
 
-    await user.click(screen.getByTestId("help-open"));
+    await user.click(screen.getByTestId("help-button"));
     expect(screen.getByTestId("help-modal")).toBeInTheDocument();
 
     await user.click(screen.getByTestId("help-overlay"));
@@ -55,7 +55,7 @@ describe("HelpModal", () => {
     const user = userEvent.setup();
     render(<HelpModal />);
 
-    await user.click(screen.getByTestId("help-open"));
+    await user.click(screen.getByTestId("help-button"));
     await user.click(screen.getByTestId("help-modal"));
 
     expect(screen.getByTestId("help-modal")).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe("HelpModal", () => {
     const user = userEvent.setup();
     render(<HelpModal />);
 
-    await user.click(screen.getByTestId("help-open"));
+    await user.click(screen.getByTestId("help-button"));
     expect(screen.getByTestId("help-modal")).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
@@ -76,7 +76,7 @@ describe("HelpModal", () => {
     const user = userEvent.setup();
     render(<HelpModal />);
 
-    await user.click(screen.getByTestId("help-open"));
+    await user.click(screen.getByTestId("help-button"));
 
     expect(screen.getByText("Basic Math")).toBeInTheDocument();
     expect(screen.getByText("Comments")).toBeInTheDocument();
@@ -95,7 +95,7 @@ describe("HelpModal", () => {
     const user = userEvent.setup();
     render(<HelpModal />);
 
-    await user.click(screen.getByTestId("help-open"));
+    await user.click(screen.getByTestId("help-button"));
 
     expect(screen.getByText("5 + 3")).toBeInTheDocument();
     expect(screen.getByText("sqrt(144)")).toBeInTheDocument();
@@ -107,11 +107,8 @@ describe("HelpModal", () => {
     const user = userEvent.setup();
     render(<HelpModal />);
 
-    await user.click(screen.getByTestId("help-open"));
+    await user.click(screen.getByTestId("help-button"));
 
-    expect(screen.getByTestId("help-close")).toHaveAttribute(
-      "aria-label",
-      "Close help",
-    );
+    expect(screen.getByTestId("help-close")).toHaveAttribute("aria-label", "Close help");
   });
 });

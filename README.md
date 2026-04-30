@@ -14,6 +14,7 @@ A notepad-style calculator that runs entirely in your browser. Type math express
 - **Integrals** — `integrate(f)`, `integral(f)`, or `antiderivative(f)` for symbolic integration
 - **Units** — mathjs units in expressions, e.g. `350 cm * 3`, `volume = 30 m^2 * 15 m`
 - **Unit conversion** — convert with `to` or `as`, e.g. `600 sec to min`, `0.5 as %`
+- **Currencies** — currency codes work as units; convert with `to`/`as`, e.g. `100 USD to EUR`, `salary = 65000 USD`, `salary as NOK`. Live rates refresh daily and are cached locally.
 - **Comments** — lines starting with `//` or `#` are ignored
 - **Shareable URLs** — your entire notepad is compressed into the URL so you can share or bookmark calculations
 - **Dark/light theme** — toggle in the header, respects system preference, persists to localStorage

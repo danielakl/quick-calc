@@ -200,9 +200,7 @@ describe("createIntegral", () => {
 
   describe("error cases", () => {
     it("throws for non-elementary integrals", () => {
-      expect(() => integral("x * sin(x)", "x")).toThrow(
-        /Cannot compute integral/,
-      );
+      expect(() => integral("x * sin(x)", "x")).toThrow(/Cannot compute integral/);
     });
 
     it("throws for x^x", () => {
@@ -210,9 +208,7 @@ describe("createIntegral", () => {
     });
 
     it("throws for unsupported function", () => {
-      expect(() => integral("gamma(x)", "x")).toThrow(
-        /Cannot compute integral/,
-      );
+      expect(() => integral("gamma(x)", "x")).toThrow(/Cannot compute integral/);
     });
   });
 

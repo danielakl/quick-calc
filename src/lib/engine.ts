@@ -7,6 +7,7 @@ import {
   type SymbolNode,
   type MathNode,
 } from "mathjs";
+import { CurrencyCode } from "./currencies";
 import { formatNumber, formatUnit, extractUnitMagnitude } from "./formatter";
 import { createIntegral } from "./integral";
 import {
@@ -19,9 +20,69 @@ import {
   type UserFunc,
   type FnCallNode,
 } from "./typeGuards";
+import { sanitize } from "./utils/sanitizeString";
+import { isEmpty } from "./utils/stringUtils";
 
 const math = create(all, {});
 const mathIntegral = createIntegral(math);
+
+// ─── Currency unit registration ──────────────────────────────────────────────
+// Currencies are registered as mathjs units anchored to USD (baseName "currency")
+// so the existing units pipeline (`to`/`as`, formatters) handles them with no
+// special-casing. Re-registration uses `override: true` so rate updates take
+// effect immediately.
+
+let currencyBaseRegistered = false;
+
+/**
+ * Register or update mathjs currency units from a USD-per-1-unit map.
+ * Each currency is registered with a lowercase alias (so `100 nok to usd`
+ * works as well as `100 NOK to USD`). Codes that conflict with built-in
+ * mathjs units are skipped silently.
+ *
+ * Uses mathjs's documented createUnit API
+ * (https://mathjs.org/docs/datatypes/units.html#user-defined-units) directly.
+ */
+export function registerCurrencyUnits(usdPerUnit: Map<CurrencyCode, number>): void {
+  if (!currencyBaseRegistered) {
+    try {
+      math.createUnit("USD", {
+        baseName: "currency",
+        prefixes: "none",
+        aliases: ["usd"],
+      });
+      currencyBaseRegistered = true;
+    } catch (e) {
+      // USD already exists as a non-currency unit (extremely unlikely) — skip.
+      console.warn(`Failed when registering currency units - ${e}`);
+      return;
+    }
+  }
+
+  for (const [code, usdAmount] of usdPerUnit) {
+    if (code === CurrencyCode.USD) {
+      continue;
+    }
+
+    if (!Number.isFinite(usdAmount) || usdAmount <= 0) {
+      console.warn(`Skipping '${code}' registration. Invalid rate '$${usdAmount}'`);
+      continue;
+    }
+
+    try {
+      // mathjs ignores `aliases` when passed on the third (options) argument,
+      // so the alias has to live in the definition object.
+      math.createUnit(
+        code,
+        { definition: `${usdAmount} USD`, aliases: [code.toLowerCase()] },
+        { override: true },
+      );
+    } catch (e) {
+      // Conflicts with a built-in mathjs unit name — skip this code.
+      console.warn(`Failed to register '${code}' - ${e}`);
+    }
+  }
+}
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -41,10 +102,7 @@ export interface LineResult {
 
 const DERIVATIVE_FN_NAMES = new Set(["derivative", "derive", "derivate"]);
 const INTEGRAL_FN_NAMES = new Set(["integral", "integrate", "antiderivative"]);
-const CALCULUS_FN_NAMES = new Set([
-  ...DERIVATIVE_FN_NAMES,
-  ...INTEGRAL_FN_NAMES,
-]);
+const CALCULUS_FN_NAMES = new Set([...DERIVATIVE_FN_NAMES, ...INTEGRAL_FN_NAMES]);
 
 function isCalculusFnCall(node: MathNode): node is FnCallNode {
   return isFnCallNode(node) && CALCULUS_FN_NAMES.has(node.fn.name);
@@ -105,6 +163,10 @@ const COMMENT_RE = /^\s*(\/\/|#)/;
 const BUILTIN_VARS = new Set(["prev", "sum", "average"]);
 /** Trailing "to %" / "as %" / "to percent" / "as percent" conversion. */
 const PERCENT_CONVERT_RE = /^(.+?)\s+(?:to|as)\s+(?:%|percent)\s*$/i;
+/** Trailing "<expr> to|as <unitName>" — captures the LHS and target unit identifier.
+ *  Used to detect the case where LHS is a plain number and the target is a unit
+ *  literal (e.g. `150 as usd`), so we can rewrite it to `(LHS) unitName`. */
+const UNIT_APPLY_RE = /^(.+?)\s+(?:to|as)\s+([\p{L}][\p{L}\p{N}_]*)\s*$/u;
 const mathNamespace = math as unknown as Record<string, unknown>;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -140,8 +202,9 @@ function collectFreeVars(
 ): string[] {
   const freeVars: string[] = [];
   const seen = new Set<string>();
-  for (const n of node.filter(isSymbolNode)) {
-    const name = (n as SymbolNode).name;
+  const symbolNodes: SymbolNode[] = node.filter(isSymbolNode).map((n) => n as SymbolNode);
+  for (const n of symbolNodes) {
+    const name = n.name;
     if (
       !seen.has(name) &&
       !(name in scope) &&
@@ -178,11 +241,7 @@ function createUserFunc(
 }
 
 /** Map an evaluation result to a LineResult. */
-function mapResult(
-  result: unknown,
-  isAssignment: boolean,
-  isFuncAssign: boolean,
-): LineResult {
+function mapResult(result: unknown, isAssignment: boolean, isFuncAssign: boolean): LineResult {
   // Plain number — most common path.
   if (typeof result === "number") {
     return {
@@ -232,17 +291,12 @@ function mapResult(
   // Bare built-in function name (e.g. "sqrt") — show required arg count.
   if (typeof result === "function") {
     const name = (result as { name?: string }).name || "Function";
-    const sigs = (result as { signatures?: Record<string, unknown> })
-      .signatures;
+    const sigs = (result as { signatures?: Record<string, unknown> }).signatures;
     let minArgs = 1;
     if (sigs && typeof sigs === "object") {
-      minArgs = Math.min(
-        ...Object.keys(sigs).map((k) => (k === "" ? 0 : k.split(",").length)),
-      );
+      minArgs = Math.min(...Object.keys(sigs).map((k) => (k === "" ? 0 : k.split(",").length)));
     }
-    return errorResult(
-      `${name} requires ${minArgs} ${minArgs === 1 ? "argument" : "arguments"}`,
-    );
+    return errorResult(`${name} requires ${minArgs} ${minArgs === 1 ? "argument" : "arguments"}`);
   }
   // Catch-all for booleans, strings, or other mathjs result types.
   return {
@@ -266,11 +320,7 @@ function convertCalculusResult(
   const seen = new Set<string>();
   for (const n of resultNode.filter(isSymbolNode)) {
     const name = (n as SymbolNode).name;
-    if (
-      !seen.has(name) &&
-      !(name in mathNamespace) &&
-      !BUILTIN_VARS.has(name)
-    ) {
+    if (!seen.has(name) && !(name in mathNamespace) && !BUILTIN_VARS.has(name)) {
       freeVars.push(name);
       seen.add(name);
     }
@@ -302,10 +352,7 @@ function convertCalculusResult(
  * Handles both UserFunc arguments and inline expressions.
  * Throws descriptive errors for invalid usage.
  */
-function processCalculusCall(
-  node: FnCallNode,
-  scope: Record<string, unknown>,
-): unknown {
+function processCalculusCall(node: FnCallNode, scope: Record<string, unknown>): unknown {
   const fnName = node.fn.name;
   const args = node.args;
   const isDerivativeFn = DERIVATIVE_FN_NAMES.has(fnName);
@@ -317,10 +364,7 @@ function processCalculusCall(
   const firstArg = args[0];
 
   // Reject quoted string arguments with a helpful message.
-  if (
-    isConstantNode(firstArg) &&
-    typeof (firstArg as { value: unknown }).value === "string"
-  ) {
+  if (isConstantNode(firstArg) && typeof (firstArg as { value: unknown }).value === "string") {
     throw new Error(`Quotes are not needed: use ${fnName}(expression) instead`);
   }
 
@@ -348,9 +392,7 @@ function processCalculusCall(
           `${symName} has parameters (${scopeValue.__params.join(", ")}), specify variable: ${fnName}(${symName}, variable)`,
         );
       }
-      return isDerivativeFn
-        ? deriveUserFunc(scopeValue)
-        : integrateUserFunc(scopeValue);
+      return isDerivativeFn ? deriveUserFunc(scopeValue) : integrateUserFunc(scopeValue);
     }
   }
 
@@ -387,24 +429,30 @@ function processCalculusCall(
 // ─── Main evaluation ─────────────────────────────────────────────────────────
 
 /**
- * Evaluates an array of calculator lines and returns a result for each.
+ * Evaluates calculator text and returns a result for each line.
  * Lines are evaluated in order with shared scope — variables assigned on
  * line N are available on line N+1.
  *
- * @param lines - Raw input strings, one per calculator line.
- * @returns Array of {@link LineResult} objects in the same order as input.
+ * @param text - Raw text input, can be a list of strings or a string with new lines characters.
+ * @returns Array of {@link LineResult} objects in the same order as input lines.
  */
-export function evaluateLines(lines: string[]): LineResult[] {
+export function evaluate(...text: [string[]] | string[]): LineResult[] {
+  const textArray: string[] =
+    text.length === 1 && Array.isArray(text[0]) ? text[0] : (text as string[]);
+  const sanitized: string[] = textArray.map((t) => sanitize(t) ?? "");
+  const lines: string[] = sanitized
+    .map((s) => s.split("\n"))
+    .flatMap((s) => s)
+    .map((l) => l.trim());
+
   const scope: Record<string, unknown> = { ...SCOPE_FUNCTIONS };
   const results: LineResult[] = [];
   let prevValue: number | null = null;
   const numericValues: number[] = [];
 
   for (const line of lines) {
-    const trimmed = line.trim();
-
     // Skip empty lines and comments.
-    if (!trimmed || COMMENT_RE.test(trimmed)) {
+    if (isEmpty(line) || COMMENT_RE.test(line)) {
       results.push(emptyResult());
       continue;
     }
@@ -413,17 +461,47 @@ export function evaluateLines(lines: string[]): LineResult[] {
     // mathjs's `to` conversion keyword, and rewrite `sec`/`min` (which mathjs
     // parses as the secant/minimum functions) to their full unit names when
     // not followed by `(`. This lets users write "600 sec to min" naturally.
-    const pctMatch = trimmed.match(PERCENT_CONVERT_RE);
+    const pctMatch = line.match(PERCENT_CONVERT_RE);
     const isPercentConvert = !!pctMatch;
-    const processed = (pctMatch ? pctMatch[1] : trimmed)
+    let processed = (pctMatch ? pctMatch[1] : line)
       .replace(/\s+as\s+/g, " to ")
       .replace(/\bsec\b(?!\s*\()/g, "seconds")
       .replace(/\bmin\b(?!\s*\()/g, "minutes");
 
+    // mathjs's `to` operator requires a Unit on the LHS — `150 to usd` errors
+    // because 150 is a plain number. If the LHS evaluates to a number and the
+    // RHS is a known unit, rewrite as a unit literal: `(150) usd`. Probing the
+    // LHS via math.evaluate is safe because the regex excludes assignments
+    // (those are handled separately upstream) and arithmetic evaluation has no
+    // side effects.
+    const unitApplyMatch = processed.match(UNIT_APPLY_RE);
+    if (unitApplyMatch && isUnitName(unitApplyMatch[2])) {
+      // Inject prev/sum/average so probing expressions that reference them works.
+      const probeScope: Record<string, unknown> = { ...scope };
+      if (prevValue !== null) {
+        probeScope.prev = prevValue;
+      }
+      if (numericValues.length > 0) {
+        probeScope.sum = numericValues.reduce((total, value) => total + value, 0);
+        probeScope.average = (probeScope.sum as number) / numericValues.length;
+      }
+      try {
+        const lhsValue = math.evaluate(unitApplyMatch[1], probeScope);
+        if (typeof lhsValue === "number") {
+          processed = `(${unitApplyMatch[1]}) ${unitApplyMatch[2]}`;
+        }
+      } catch {
+        // LHS doesn't evaluate cleanly — leave the original processed string;
+        // mathjs will surface its own error if the conversion is invalid.
+      }
+    }
+
     // Inject engine-managed variables.
     // prev is only available after at least one numeric result.
     // sum and average are only available after at least one numeric result.
-    if (prevValue !== null) scope.prev = prevValue;
+    if (prevValue !== null) {
+      scope.prev = prevValue;
+    }
     if (numericValues.length > 0) {
       scope.sum = numericValues.reduce((a, b) => a + b, 0);
       scope.average = (scope.sum as number) / numericValues.length;
@@ -432,19 +510,19 @@ export function evaluateLines(lines: string[]): LineResult[] {
     // Guard variable assignment to built-in functions (e.g. sqrt = 5).
     // Checking for "function" distinguishes functions (sqrt, sin…) from
     // constants (pi, e…), which are allowed to be shadowed.
-    const isAssignment = ASSIGNMENT_RE.test(trimmed);
+    const isAssignment = ASSIGNMENT_RE.test(line);
     if (isAssignment) {
-      const match = trimmed.match(ASSIGNMENT_RE);
+      const match = line.match(ASSIGNMENT_RE);
       if (match && isBuiltinFunction(match[1])) {
-        results.push(
-          errorResult(`Cannot assign to built-in function "${match[1]}"`),
-        );
+        results.push(errorResult(`Cannot assign to built-in function "${match[1]}"`));
         continue;
       }
     }
 
     const applyPercent = (r: LineResult): LineResult => {
-      if (!isPercentConvert || r.value === null) return r;
+      if (!isPercentConvert || r.value === null) {
+        return r;
+      }
       const pct = r.value * 100;
       return { ...r, value: pct, display: `${formatNumber(pct)}%` };
     };
@@ -454,19 +532,14 @@ export function evaluateLines(lines: string[]): LineResult[] {
 
       // Guard function assignment to built-in functions (e.g. sin(x) = x).
       if (isFuncAssignNode(node) && isBuiltinFunction(node.name)) {
-        results.push(
-          errorResult(`Cannot assign to built-in function "${node.name}"`),
-        );
+        results.push(errorResult(`Cannot assign to built-in function "${node.name}"`));
         continue;
       }
 
       // ── Calculus function calls ──
       // Intercepted at the AST level so inline expressions (e.g. derivate(x^2))
       // are handled symbolically instead of being evaluated first.
-      if (
-        isCalculusFnCall(node) ||
-        (isAssignNode(node) && isCalculusFnCall(node.value))
-      ) {
+      if (isCalculusFnCall(node) || (isAssignNode(node) && isCalculusFnCall(node.value))) {
         try {
           let result: unknown;
           let calcIsAssignment = false;
@@ -498,12 +571,7 @@ export function evaluateLines(lines: string[]): LineResult[] {
         const freeVars = collectFreeVars(node.value, scope);
         if (freeVars.length > 0) {
           const exprStr = node.value.toString();
-          scope[node.object.name] = createUserFunc(
-            exprStr,
-            freeVars,
-            node.value.compile(),
-            scope,
-          );
+          scope[node.object.name] = createUserFunc(exprStr, freeVars, node.value.compile(), scope);
           results.push({
             value: null,
             display: exprStr,
@@ -524,9 +592,7 @@ export function evaluateLines(lines: string[]): LineResult[] {
         fn.__params = [...node.params];
       }
 
-      const lineResult = applyPercent(
-        mapResult(result, isAssignment, isFuncAssignNode(node)),
-      );
+      const lineResult = applyPercent(mapResult(result, isAssignment, isFuncAssignNode(node)));
 
       // Track numeric values for prev/sum/average.
       if (lineResult.value !== null) {

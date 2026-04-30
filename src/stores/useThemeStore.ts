@@ -8,17 +8,20 @@ interface ThemeState {
 }
 
 function getSystemTheme(): Theme {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return "dark";
-  return window.matchMedia("(prefers-color-scheme: light)").matches
-    ? "light"
-    : "dark";
+  }
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 }
 
 function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") {
+    return "dark";
+  }
   const stored = localStorage.getItem("theme");
-  if (stored === "light" || stored === "dark") return stored;
+  if (stored === "light" || stored === "dark") {
+    return stored;
+  }
   return getSystemTheme();
 }
 

@@ -6,9 +6,7 @@ interface ResultLineProps {
 
 export default function ResultLine({ result }: ResultLineProps) {
   if (result.error) {
-    return (
-      <div className="h-6 truncate text-right text-error">{result.error}</div>
-    );
+    return <div className="h-6 truncate text-right text-error">{result.error}</div>;
   }
 
   if (!result.display) {

@@ -6,7 +6,7 @@ import Calculator from "./Calculator";
 
 beforeEach(() => {
   cleanup();
-  useCalcStore.setState({ text: "", results: [] });
+  useCalcStore.setState({ text: "" });
   window.history.replaceState(null, "", "/");
 });
 

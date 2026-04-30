@@ -24,9 +24,7 @@ export interface UserFunc {
  * @see https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates
  */
 export function isUserFunc(value: unknown): value is UserFunc {
-  return (
-    typeof value === "function" && "__expr" in value && "__params" in value
-  );
+  return typeof value === "function" && "__expr" in value && "__params" in value;
 }
 
 /**
@@ -83,18 +81,19 @@ export interface FnCallNode extends MathNode {
 
 /** Type guard — narrows `node` to {@link FnCallNode}. */
 export function isFnCallNode(node: MathNode): node is FnCallNode {
-  if (node.type !== "FunctionNode") return false;
+  if (node.type !== "FunctionNode") {
+    return false;
+  }
   const fn = (node as unknown as Record<string, unknown>).fn;
-  return (
-    !!fn &&
-    typeof fn === "object" &&
-    typeof (fn as Record<string, unknown>).name === "string"
-  );
+  return !!fn && typeof fn === "object" && typeof (fn as Record<string, unknown>).name === "string";
 }
 
 /** Type guard — narrows `value` to a mathjs BigNumber, Fraction, or Unit (numeric objects coercible via `toNumber()`). */
-export function isCoercibleNumeric(
-  value: unknown,
-): value is { toNumber(): number } & object {
+export function isCoercibleNumeric(value: unknown): value is { toNumber(): number } & object {
   return typeof value === "object" && value !== null && "toNumber" in value;
+}
+
+/** Type guard — narrows `value` to a plain object. */
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

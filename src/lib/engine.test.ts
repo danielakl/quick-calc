@@ -1,97 +1,102 @@
 import { describe, it, expect } from "vitest";
-import { evaluateLines, LineResult } from "./engine";
+import { CurrencyCode } from "./currencies";
+import { evaluate, LineResult, registerCurrencyUnits } from "./engine";
 
 function values(results: LineResult[]) {
   return results.map((r) => r.value);
 }
 
-describe("evaluateLines", () => {
+function rateMap(rates: Partial<Record<CurrencyCode, number>>): Map<CurrencyCode, number> {
+  return new Map(Object.entries(rates) as [CurrencyCode, number][]);
+}
+
+describe("evaluate", () => {
   describe("basic arithmetic", () => {
     it("evaluates simple expressions", () => {
-      const results = evaluateLines(["2 + 3", "10 - 4", "6 * 7", "20 / 5"]);
+      const results = evaluate("2 + 3", "10 - 4", "6 * 7", "20 / 5");
       expect(values(results)).toEqual([5, 6, 42, 4]);
     });
 
     it("handles operator precedence", () => {
-      const results = evaluateLines(["2 + 3 * 4"]);
+      const results = evaluate("2 + 3 * 4");
       expect(results[0].value).toBe(14);
     });
 
     it("handles parentheses", () => {
-      const results = evaluateLines(["(2 + 3) * 4"]);
+      const results = evaluate("(2 + 3) * 4");
       expect(results[0].value).toBe(20);
     });
 
     it("handles negative numbers", () => {
-      const results = evaluateLines(["-5 + 3"]);
+      const results = evaluate("-5 + 3");
       expect(results[0].value).toBe(-2);
     });
 
     it("handles decimals", () => {
-      const results = evaluateLines(["1.5 + 2.5"]);
+      const results = evaluate("1.5 + 2.5");
       expect(results[0].value).toBe(4);
     });
   });
 
   describe("empty and comment lines", () => {
     it("returns null for empty lines", () => {
-      const results = evaluateLines(["", "  ", "1 + 1"]);
+      const results = evaluate(["", "  ", "1 + 1"]);
       expect(values(results)).toEqual([null, null, 2]);
     });
 
     it("treats // comments as empty", () => {
-      const results = evaluateLines(["// this is a comment", "5"]);
+      const results = evaluate("// this is a comment\n5");
       expect(values(results)).toEqual([null, 5]);
     });
 
     it("treats # comments as empty", () => {
-      const results = evaluateLines(["# comment", "10"]);
+      const results = evaluate("# comment", "10");
       expect(values(results)).toEqual([null, 10]);
     });
 
     it("handles indented comments", () => {
-      const results = evaluateLines(["  // indented", "  # also indented"]);
+      const results = evaluate(["  // indented", "  # also indented"]);
       expect(values(results)).toEqual([null, null]);
     });
   });
 
   describe("variables and assignments", () => {
     it("assigns and uses variables", () => {
-      const results = evaluateLines(["x = 10", "x * 2"]);
+      const results = evaluate(["x = 10", "x * 2"]);
       expect(values(results)).toEqual([10, 20]);
     });
 
     it("flags assignments with isAssignment", () => {
-      const results = evaluateLines(["x = 5", "x + 1"]);
+      const results = evaluate(["x = 5", "x + 1"]);
       expect(results[0].isAssignment).toBe(true);
       expect(results[1].isAssignment).toBe(false);
     });
 
     it("supports multiple variables", () => {
-      const results = evaluateLines(["a = 3", "b = 4", "a + b"]);
+      const results = evaluate(["a = 3", "b = 4", "a + b"]);
       expect(values(results)).toEqual([3, 4, 7]);
     });
 
     it("supports reassignment", () => {
-      const results = evaluateLines(["x = 1", "x = x + 9", "x"]);
+      const results = evaluate(["x = 1", "x = x + 9", "x"]);
       expect(values(results)).toEqual([1, 10, 10]);
     });
 
     it("supports Unicode letter identifiers", () => {
-      const results = evaluateLines(["café = 5"]);
+      const results = evaluate("café = 5");
       expect(results[0].value).toBe(5);
       expect(results[0].isAssignment).toBe(true);
     });
 
     it("supports Greek letter assignment and reuse", () => {
-      const results = evaluateLines(["π = 3.14", "π * 2"]);
+      const results = evaluate(["π = 3.14", "π * 2"]);
       expect(results[0].value).toBeCloseTo(3.14);
       expect(results[0].isAssignment).toBe(true);
       expect(results[1].value).toBeCloseTo(6.28);
     });
 
     it("does not block Unicode identifiers as built-in functions", () => {
-      const results = evaluateLines(["café = 10"]);
+      const results = evaluate("café = 10");
       expect(results[0].error).toBe(null);
       expect(results[0].value).toBe(10);
     });
@@ -99,7 +104,7 @@ describe("evaluateLines", () => {
 
   describe("function assignments", () => {
     it("defines and calls a single-param function", () => {
-      const results = evaluateLines(["f(x) = x^2", "f(3)"]);
+      const results = evaluate("f(x) = x^2", "f(3)");
       expect(results[0].value).toBe(null);
       expect(results[0].isAssignment).toBe(true);
       expect(results[0].error).toBe(null);
@@ -107,54 +112,50 @@ describe("evaluateLines", () => {
     });
 
     it("displays the function expression", () => {
-      const results = evaluateLines(["f(x) = x^2"]);
+      const results = evaluate("f(x) = x^2");
       expect(results[0].display).toBe("x ^ 2");
     });
 
     it("defines and calls a multi-param function", () => {
-      const results = evaluateLines(["area(w, h) = w * h", "area(3, 4)"]);
+      const results = evaluate(["area(w, h) = w * h", "area(3, 4)"]);
       expect(results[1].value).toBe(12);
     });
 
     it("uses function result in expressions", () => {
-      const results = evaluateLines(["f(x) = x^2", "f(3) + 1"]);
+      const results = evaluate(["f(x) = x^2", "f(3) + 1"]);
       expect(results[1].value).toBe(10);
     });
 
     it("uses scope variables inside function body", () => {
-      const results = evaluateLines([
-        "rate = 0.1",
-        "tax(x) = x * rate",
-        "tax(100)",
-      ]);
+      const results = evaluate(["rate = 0.1", "tax(x) = x * rate", "tax(100)"]);
       expect(results[2].value).toBeCloseTo(10);
     });
 
     it("does not default function parameters to 1", () => {
-      const results = evaluateLines(["f(x) = x + 10", "f(5)"]);
+      const results = evaluate(["f(x) = x + 10", "f(5)"]);
       expect(results[1].value).toBe(15);
     });
 
     it("blocks assignment to built-in functions", () => {
-      const results = evaluateLines(["sin(x) = x"]);
+      const results = evaluate("sin(x) = x");
       expect(results[0].error).toBe('Cannot assign to built-in function "sin"');
       expect(results[0].value).toBe(null);
     });
 
     it("does not break subsequent lines after function definition", () => {
-      const results = evaluateLines(["f(x) = x * 2", "10 + 5"]);
+      const results = evaluate(["f(x) = x * 2", "10 + 5"]);
       expect(results[1].value).toBe(15);
     });
 
     it("function definition does not contribute to prev or sum", () => {
-      const results = evaluateLines(["10", "f(x) = x^2", "prev"]);
+      const results = evaluate(["10", "f(x) = x^2", "prev"]);
       expect(results[2].value).toBe(10);
     });
   });
 
   describe("simplified function declarations", () => {
     it("creates function from assignment with free variables", () => {
-      const results = evaluateLines(["func = x^2 + 5", "func(3)"]);
+      const results = evaluate(["func = x^2 + 5", "func(3)"]);
       expect(results[0].value).toBe(null);
       expect(results[0].isAssignment).toBe(true);
       expect(results[0].display).toBe("x ^ 2 + 5");
@@ -162,55 +163,51 @@ describe("evaluateLines", () => {
     });
 
     it("creates multi-param function", () => {
-      const results = evaluateLines(["f = x + y", "f(3, 4)"]);
+      const results = evaluate(["f = x + y", "f(3, 4)"]);
       expect(results[1].value).toBe(7);
     });
 
     it("evaluates normally when all variables are in scope", () => {
-      const results = evaluateLines(["x = 5", "y = x + 1"]);
+      const results = evaluate(["x = 5", "y = x + 1"]);
       expect(results[1].value).toBe(6);
       expect(results[1].isAssignment).toBe(true);
     });
 
     it("captures scope variables in function body", () => {
-      const results = evaluateLines([
-        "rate = 0.1",
-        "tax = x * rate",
-        "tax(100)",
-      ]);
+      const results = evaluate(["rate = 0.1", "tax = x * rate", "tax(100)"]);
       expect(results[2].value).toBeCloseTo(10);
     });
 
     it("can be passed to derivate", () => {
-      const results = evaluateLines(["f = x^2", "g = derivate(f)", "g(5)"]);
+      const results = evaluate(["f = x^2", "g = derivate(f)", "g(5)"]);
       expect(results[2].value).toBe(10);
     });
   });
 
   describe("builtins: prev, sum, average", () => {
     it("prev references the last numeric result", () => {
-      const results = evaluateLines(["42", "prev + 8"]);
+      const results = evaluate(["42", "prev + 8"]);
       expect(values(results)).toEqual([42, 50]);
     });
 
     it("prev updates after each line", () => {
-      const results = evaluateLines(["10", "20", "prev"]);
+      const results = evaluate("10", "20", "prev");
       expect(results[2].value).toBe(20);
     });
 
     it("sum accumulates all numeric results", () => {
-      const results = evaluateLines(["10", "20", "30", "sum"]);
+      const results = evaluate(["10", "20", "30", "sum"]);
       expect(results[3].value).toBe(60);
     });
 
     it("average computes running average", () => {
-      const results = evaluateLines(["10", "20", "30", "average"]);
+      const results = evaluate(["10", "20", "30", "average"]);
       expect(results[3].value).toBe(20);
     });
 
     it("prev is not set before any numeric result", () => {
       // A comment followed by prev — prev should not be available
-      const results = evaluateLines(["// nothing yet", "prev"]);
+      const results = evaluate(["// nothing yet", "prev"]);
       // prev is undefined, mathjs will throw, result is silently skipped
       expect(results[1].value).toBe(null);
     });
@@ -218,60 +215,58 @@ describe("evaluateLines", () => {
 
   describe("undefined variables", () => {
     it("bare name returns no value", () => {
-      const results = evaluateLines(["variable"]);
+      const results = evaluate("variable");
       expect(results[0].value).toBe(null);
     });
 
     it("undefined variable in expression returns no value", () => {
-      const results = evaluateLines(["variable + 5"]);
+      const results = evaluate("variable + 5");
       expect(results[0].value).toBe(null);
     });
 
     it("does not override explicitly assigned variables", () => {
-      const results = evaluateLines(["x = 10", "x"]);
+      const results = evaluate(["x = 10", "x"]);
       expect(values(results)).toEqual([10, 10]);
     });
 
     it("does not default prev when not set", () => {
-      const results = evaluateLines(["nothing", "prev"]);
+      const results = evaluate(["nothing", "prev"]);
       expect(results[1].value).toBe(null);
     });
 
     it("does not default sum or average when not set", () => {
-      const results = evaluateLines(["nothing", "average"]);
+      const results = evaluate(["nothing", "average"]);
       expect(results[1].value).toBe(null);
     });
 
     it("is not flagged as assignment", () => {
-      const results = evaluateLines(["variable"]);
+      const results = evaluate("variable");
       expect(results[0].isAssignment).toBe(false);
     });
   });
 
   describe("function assignment protection", () => {
     it("shows error when assigning to a built-in function", () => {
-      const results = evaluateLines(["sqrt = 5"]);
-      expect(results[0].error).toBe(
-        'Cannot assign to built-in function "sqrt"',
-      );
+      const results = evaluate("sqrt = 5");
+      expect(results[0].error).toBe('Cannot assign to built-in function "sqrt"');
       expect(results[0].value).toBe(null);
     });
 
     it("blocks assignment to any math function", () => {
-      const results = evaluateLines(["sin = 1", "cos = 2", "log = 3"]);
+      const results = evaluate(["sin = 1", "cos = 2", "log = 3"]);
       expect(results[0].error).toContain("Cannot assign to built-in function");
       expect(results[1].error).toContain("Cannot assign to built-in function");
       expect(results[2].error).toContain("Cannot assign to built-in function");
     });
 
     it("does not break subsequent lines", () => {
-      const results = evaluateLines(["sqrt = 5", "2 + 2"]);
+      const results = evaluate(["sqrt = 5", "2 + 2"]);
       expect(results[0].error).toContain("Cannot assign");
       expect(results[1].value).toBe(4);
     });
 
     it("allows assignment to regular variables", () => {
-      const results = evaluateLines(["x = 5"]);
+      const results = evaluate("x = 5");
       expect(results[0].value).toBe(5);
       expect(results[0].error).toBe(null);
     });
@@ -279,49 +274,49 @@ describe("evaluateLines", () => {
 
   describe("error handling", () => {
     it("silently handles invalid expressions", () => {
-      const results = evaluateLines(["1 +"]);
+      const results = evaluate("1 +");
       expect(results[0].value).toBe(null);
       expect(results[0].error).toBe(null);
       expect(results[0].display).toBe("");
     });
 
     it("does not break subsequent lines after an error", () => {
-      const results = evaluateLines(["(1 +", "2 + 2"]);
+      const results = evaluate(["(1 +", "2 + 2"]);
       expect(values(results)).toEqual([null, 4]);
     });
   });
 
   describe("math functions", () => {
     it("supports sqrt", () => {
-      const results = evaluateLines(["sqrt(144)"]);
+      const results = evaluate("sqrt(144)");
       expect(results[0].value).toBe(12);
     });
 
     it("supports power", () => {
-      const results = evaluateLines(["2^10"]);
+      const results = evaluate("2^10");
       expect(results[0].value).toBe(1024);
     });
 
     it("supports pi", () => {
-      const results = evaluateLines(["pi"]);
+      const results = evaluate("pi");
       expect(results[0].value).toBeCloseTo(Math.PI);
     });
 
     it("shows error for bare function name", () => {
-      const results = evaluateLines(["log"]);
+      const results = evaluate("log");
       expect(results[0].value).toBe(null);
       expect(results[0].error).toBe("log requires 1 argument");
       expect(results[0].display).toBe("");
     });
 
     it("shows error with correct arg count for multi-arg functions", () => {
-      const results = evaluateLines(["pow"]);
+      const results = evaluate("pow");
       expect(results[0].value).toBe(null);
       expect(results[0].error).toBe("pow requires 2 arguments");
     });
 
     it("does not break subsequent lines after bare function name", () => {
-      const results = evaluateLines(["sin", "2 + 2"]);
+      const results = evaluate(["sin", "2 + 2"]);
       expect(results[0].error).toBe("sin requires 1 argument");
       expect(results[1].value).toBe(4);
     });
@@ -329,67 +324,67 @@ describe("evaluateLines", () => {
 
   describe("derivative", () => {
     it("inline: returns constant for derivative of linear", () => {
-      const results = evaluateLines(["derivate(2 * x)"]);
+      const results = evaluate("derivate(2 * x)");
       expect(results[0].value).toBe(2);
       expect(results[0].error).toBe(null);
     });
 
     it("inline: returns callable for derivative of polynomial", () => {
-      const results = evaluateLines(["derivate(x^2)"]);
+      const results = evaluate("derivate(x^2)");
       expect(results[0].display).toBe("2 * x");
       expect(results[0].error).toBe(null);
     });
 
     it("inline: infers variable from single free var", () => {
-      const results = evaluateLines(["derivate(y^3)"]);
+      const results = evaluate("derivate(y^3)");
       expect(results[0].display).toBe("3 * y ^ 2");
     });
 
     it("inline: explicit variable with two-arg form", () => {
-      const results = evaluateLines(["derivate(2 * y + z, z)"]);
+      const results = evaluate("derivate(2 * y + z, z)");
       expect(results[0].value).toBe(1);
     });
 
     it("inline: trig function", () => {
-      const results = evaluateLines(["g = derivate(sin(x))", "g(0)"]);
+      const results = evaluate(["g = derivate(sin(x))", "g(0)"]);
       // derivative of sin(x) is cos(x), cos(0) = 1
       expect(results[1].value).toBeCloseTo(1);
     });
 
     it("does not break subsequent lines", () => {
-      const results = evaluateLines(["derivate(x^2)", "2 + 2"]);
+      const results = evaluate(["derivate(x^2)", "2 + 2"]);
       expect(results[0].display).toBe("2 * x");
       expect(results[1].value).toBe(4);
     });
 
     it("does not contribute to prev, sum, or average", () => {
-      const results = evaluateLines(["10", "derivate(x^2)", "prev"]);
+      const results = evaluate(["10", "derivate(x^2)", "prev"]);
       expect(results[2].value).toBe(10);
     });
 
     it("derive is an alias for derivative", () => {
-      const results = evaluateLines(["derive(x^2)"]);
+      const results = evaluate("derive(x^2)");
       expect(results[0].display).toBe("2 * x");
     });
 
     it("derivate is an alias for derivative", () => {
-      const results = evaluateLines(["derivate(x^2)"]);
+      const results = evaluate("derivate(x^2)");
       expect(results[0].display).toBe("2 * x");
     });
 
     it("derivative accepts a user-defined function", () => {
-      const results = evaluateLines(["f(x) = x^2", "derivative(f)"]);
+      const results = evaluate(["f(x) = x^2", "derivative(f)"]);
       expect(results[1].display).toBe("2 * x");
     });
 
     it("derivate returns a callable function", () => {
-      const results = evaluateLines(["f = x^3", "g = derivate(f)", "g(2)"]);
+      const results = evaluate(["f = x^3", "g = derivate(f)", "g(2)"]);
       expect(results[1].display).toBe("3 * x ^ 2");
       expect(results[2].value).toBe(12);
     });
 
     it("end-to-end: define, derive, call both", () => {
-      const results = evaluateLines([
+      const results = evaluate([
         "func = x^2 + x - 1",
         "func2 = derivate(func)",
         "func(10)",
@@ -402,46 +397,46 @@ describe("evaluateLines", () => {
     });
 
     it("derives traditional function declaration", () => {
-      const results = evaluateLines(["f(x) = x^3", "g = derive(f)", "g(2)"]);
+      const results = evaluate(["f(x) = x^3", "g = derive(f)", "g(2)"]);
       expect(results[2].value).toBe(12);
     });
 
     it("errors for multi-param UserFunc without variable", () => {
-      const results = evaluateLines(["f = 2 * y + z", "derivate(f)"]);
+      const results = evaluate(["f = 2 * y + z", "derivate(f)"]);
       expect(results[1].error).toContain("parameters");
       expect(results[1].error).toContain("specify variable");
     });
 
     it("multi-param UserFunc works with explicit variable", () => {
-      const results = evaluateLines(["f = 2 * y + z", "g = derivate(f, y)"]);
+      const results = evaluate(["f = 2 * y + z", "g = derivate(f, y)"]);
       expect(results[1].value).toBe(null);
       // derivative of 2*y+z w.r.t. y = 2 → but returns a UserFunc with params [y, z]
       expect(results[1].display).toBe("2");
     });
 
     it("errors for too many arguments", () => {
-      const results = evaluateLines(["derivate(x^2, x, y)"]);
+      const results = evaluate("derivate(x^2, x, y)");
       expect(results[0].error).toContain("1 or 2 arguments");
     });
 
     it("rejects quoted string arguments", () => {
-      const results = evaluateLines(['derivate("x^2", "x")']);
+      const results = evaluate('derivate("x^2", "x")');
       expect(results[0].error).toContain("Quotes are not needed");
     });
 
     it("errors for multiple free variables without explicit var", () => {
-      const results = evaluateLines(["derivate(x + y)"]);
+      const results = evaluate("derivate(x + y)");
       expect(results[0].error).toContain("Multiple variables");
       expect(results[0].error).toContain("specify variable");
     });
 
     it("constant derivative returns number", () => {
-      const results = evaluateLines(["derivate(3 * x + 5)"]);
+      const results = evaluate("derivate(3 * x + 5)");
       expect(results[0].value).toBe(3);
     });
 
     it("inline derivative assigned to variable is callable", () => {
-      const results = evaluateLines(["g = derivate(x^2 + x)", "g(3)"]);
+      const results = evaluate(["g = derivate(x^2 + x)", "g(3)"]);
       expect(results[0].display).toBe("2 * x + 1");
       expect(results[0].isAssignment).toBe(true);
       expect(results[1].value).toBe(7);
@@ -450,25 +445,25 @@ describe("evaluateLines", () => {
 
   describe("integral", () => {
     it("inline: returns callable for integral of polynomial", () => {
-      const results = evaluateLines(["integral(x^2)"]);
+      const results = evaluate("integral(x^2)");
       expect(results[0].display).toBe("x ^ 3 / 3");
       expect(results[0].error).toBe(null);
     });
 
     it("inline: returns callable for integral of trig", () => {
-      const results = evaluateLines(["g = integral(sin(x))", "g(0)"]);
+      const results = evaluate(["g = integral(sin(x))", "g(0)"]);
       // integral of sin(x) is -cos(x), -cos(0) = -1
       expect(results[1].value).toBeCloseTo(-1);
     });
 
     it("inline: infers variable from single free var", () => {
-      const results = evaluateLines(["integrate(z + 10)"]);
+      const results = evaluate("integrate(z + 10)");
       // ∫(z + 10) = z^2/2 + 10z → UserFunc
       expect(results[0].display).toContain("z");
     });
 
     it("inline: explicit variable with two-arg form", () => {
-      const results = evaluateLines(["g = integral(2 * y + z, z)", "g(1, 5)"]);
+      const results = evaluate(["g = integral(2 * y + z, z)", "g(1, 5)"]);
       // ∫(2y + z) dz = 2y*z + z^2/2 → at y=1, z=5: 10 + 12.5 = 22.5
       // Wait, but params are only [z], y comes from scope... Actually y is free
       // We need to test a simpler case
@@ -476,39 +471,39 @@ describe("evaluateLines", () => {
     });
 
     it("does not break subsequent lines", () => {
-      const results = evaluateLines(["integral(x^2)", "2 + 2"]);
+      const results = evaluate(["integral(x^2)", "2 + 2"]);
       expect(results[0].display).toBe("x ^ 3 / 3");
       expect(results[1].value).toBe(4);
     });
 
     it("does not contribute to prev, sum, or average", () => {
-      const results = evaluateLines(["10", "integral(x^2)", "prev"]);
+      const results = evaluate(["10", "integral(x^2)", "prev"]);
       expect(results[2].value).toBe(10);
     });
 
     it("integrate is an alias for integral", () => {
-      const results = evaluateLines(["integrate(x^2)"]);
+      const results = evaluate("integrate(x^2)");
       expect(results[0].display).toBe("x ^ 3 / 3");
     });
 
     it("antiderivative is an alias for integral", () => {
-      const results = evaluateLines(["antiderivative(x^2)"]);
+      const results = evaluate("antiderivative(x^2)");
       expect(results[0].display).toBe("x ^ 3 / 3");
     });
 
     it("integral accepts a user-defined function", () => {
-      const results = evaluateLines(["f(x) = x^2", "integral(f)"]);
+      const results = evaluate(["f(x) = x^2", "integral(f)"]);
       expect(results[1].display).toBe("x ^ 3 / 3");
     });
 
     it("integrate returns a callable function", () => {
-      const results = evaluateLines(["f = x^3", "g = integrate(f)", "g(2)"]);
+      const results = evaluate(["f = x^3", "g = integrate(f)", "g(2)"]);
       expect(results[1].display).toBe("x ^ 4 / 4");
       expect(results[2].value).toBe(4);
     });
 
     it("end-to-end: define, integrate, call both", () => {
-      const results = evaluateLines([
+      const results = evaluate([
         "func = x^2 + x",
         "func2 = integrate(func)",
         "func(3)",
@@ -521,34 +516,29 @@ describe("evaluateLines", () => {
     });
 
     it("roundtrip: derivate(integrate(f)) recovers original", () => {
-      const results = evaluateLines([
-        "f = x^2",
-        "g = integrate(f)",
-        "h = derivate(g)",
-        "h(5)",
-      ]);
+      const results = evaluate(["f = x^2", "g = integrate(f)", "h = derivate(g)", "h(5)"]);
       // h should be equivalent to f: x^2
       expect(results[3].value).toBe(25);
     });
 
     it("integrates traditional function declaration", () => {
-      const results = evaluateLines(["f(x) = x^3", "g = integrate(f)", "g(2)"]);
+      const results = evaluate(["f(x) = x^3", "g = integrate(f)", "g(2)"]);
       expect(results[2].value).toBe(4);
     });
 
     it("errors for multi-param UserFunc without variable", () => {
-      const results = evaluateLines(["f = 2 * y + z", "integral(f)"]);
+      const results = evaluate(["f = 2 * y + z", "integral(f)"]);
       expect(results[1].error).toContain("parameters");
       expect(results[1].error).toContain("specify variable");
     });
 
     it("rejects quoted string arguments", () => {
-      const results = evaluateLines(['integral("x^2", "x")']);
+      const results = evaluate(['integral("x^2", "x")']);
       expect(results[0].error).toContain("Quotes are not needed");
     });
 
     it("inline integral assigned to variable is callable", () => {
-      const results = evaluateLines(["g = integrate(x^2 + x)", "g(3)"]);
+      const results = evaluate(["g = integrate(x^2 + x)", "g(3)"]);
       // ∫(x^2 + x) = x^3/3 + x^2/2 → at x=3: 9 + 4.5 = 13.5
       expect(results[0].isAssignment).toBe(true);
       expect(results[1].value).toBeCloseTo(13.5);
@@ -557,92 +547,165 @@ describe("evaluateLines", () => {
 
   describe("units", () => {
     it("multiplies a unit by a scalar", () => {
-      const results = evaluateLines(["350 cm * 3"]);
+      const results = evaluate("350 cm * 3");
       expect(results[0].value).toBe(10.5);
       // mathjs auto-scales cm → m when crossing prefix thresholds.
       expect(results[0].display).toBe("10.5 m");
     });
 
     it("assigns a unit expression", () => {
-      const results = evaluateLines(["volume = 30 m^2 * 15 m"]);
+      const results = evaluate("volume = 30 m^2 * 15 m");
       expect(results[0].value).toBe(450);
       expect(results[0].display).toBe("450 m^3");
       expect(results[0].isAssignment).toBe(true);
     });
 
     it("reuses a unit variable in a later expression", () => {
-      const results = evaluateLines(["volume = 30 m^2 * 15 m", "volume / 2"]);
+      const results = evaluate(["volume = 30 m^2 * 15 m", "volume / 2"]);
       expect(results[1].value).toBe(225);
       expect(results[1].display).toBe("225 m^3");
     });
 
     it("converts units with `to`", () => {
-      const results = evaluateLines(["600 sec to min"]);
+      const results = evaluate("600 sec to min");
       expect(results[0].value).toBe(10);
       expect(results[0].display).toBe("10 minutes");
     });
 
     it("converts units with `as`", () => {
-      const results = evaluateLines(["30 sec as minutes"]);
+      const results = evaluate("30 sec as minutes");
       expect(results[0].value).toBe(0.5);
       expect(results[0].display).toBe("0.5 minutes");
     });
 
     it("converts to percent with `as %`", () => {
-      const results = evaluateLines(["0.5 as %"]);
+      const results = evaluate("0.5 as %");
       expect(results[0].value).toBe(50);
       expect(results[0].display).toBe("50%");
     });
 
     it("converts to percent with `to %`", () => {
-      const results = evaluateLines(["0.25 to %"]);
+      const results = evaluate("0.25 to %");
       expect(results[0].value).toBe(25);
       expect(results[0].display).toBe("25%");
     });
 
     it("converts to percent with the word `percent`", () => {
-      const results = evaluateLines(["0.75 as percent"]);
+      const results = evaluate("0.75 as percent");
       expect(results[0].display).toBe("75%");
     });
 
     it("surfaces an error on mismatched units", () => {
-      const results = evaluateLines(["600 sec to kg"]);
+      const results = evaluate("600 sec to kg");
       expect(results[0].value).toBe(null);
       expect(results[0].error).toMatch(/unit/i);
     });
 
     it("keeps incomplete input silent", () => {
-      const results = evaluateLines(["1 +"]);
+      const results = evaluate("1 +");
       expect(results[0].value).toBe(null);
       expect(results[0].error).toBe(null);
       expect(results[0].display).toBe("");
     });
 
     it("applies thousand separators to unit magnitudes", () => {
-      const results = evaluateLines(["12345 inch"]);
+      const results = evaluate("12345 inch");
       expect(results[0].display).toBe("12,345 inch");
     });
 
     it("preserves the secant function when followed by parentheses", () => {
-      const results = evaluateLines(["sec(0)"]);
+      const results = evaluate("sec(0)");
       expect(results[0].value).toBeCloseTo(1);
     });
 
     it("preserves the minimum function when followed by parentheses", () => {
-      const results = evaluateLines(["min(3, 7, 2)"]);
+      const results = evaluate("min(3, 7, 2)");
       expect(results[0].value).toBe(2);
     });
   });
 
   describe("display formatting", () => {
     it("formats integers with thousand separators", () => {
-      const results = evaluateLines(["1000000"]);
+      const results = evaluate("1000000");
       expect(results[0].display).toBe("1,000,000");
     });
 
     it("formats decimal results", () => {
-      const results = evaluateLines(["1 / 3"]);
+      const results = evaluate("1 / 3");
       expect(results[0].display).toContain("0.333");
+    });
+  });
+
+  describe("currency units", () => {
+    it("converts between registered currencies", () => {
+      // 1 EUR = 1.087 USD → 100 USD = 100/1.087 EUR ≈ 91.99
+      registerCurrencyUnits(rateMap({ USD: 1, EUR: 1.087 }));
+      const result = evaluate("100 USD to EUR");
+      expect(result[0].value).toBeCloseTo(100 / 1.087, 4);
+      expect(result[0].display).toContain("€");
+    });
+
+    it("supports `as` for currency conversion", () => {
+      registerCurrencyUnits(rateMap({ USD: 1, GBP: 1.273 }));
+      const result = evaluate("100 USD as GBP");
+      expect(result[0].value).toBeCloseTo(100 / 1.273, 4);
+      expect(result[0].display).toContain("£");
+    });
+
+    it("adds quantities in different currencies", () => {
+      registerCurrencyUnits(rateMap({ USD: 1, EUR: 1.087 }));
+      // 100 USD + 50 EUR (= 50 * 1.087 USD) = 154.35 USD
+      const result = evaluate("100 USD + 50 EUR");
+      expect(result[0].value).toBeCloseTo(100 + 50 * 1.087, 4);
+    });
+
+    it("multiplies currency by scalar", () => {
+      registerCurrencyUnits(rateMap({ USD: 1, EUR: 1.087 }));
+      const result = evaluate("50 EUR * 3");
+      expect(result[0].value).toBeCloseTo(150, 4);
+      expect(result[0].display).toContain("€");
+    });
+
+    it("re-registering with new rates updates results", () => {
+      registerCurrencyUnits(rateMap({ USD: 1, EUR: 1.0 }));
+      let result = evaluate("100 USD to EUR");
+      expect(result[0].value).toBeCloseTo(100, 4);
+
+      registerCurrencyUnits(rateMap({ USD: 1, EUR: 2.0 }));
+      result = evaluate("100 USD to EUR");
+      expect(result[0].value).toBeCloseTo(50, 4);
+    });
+
+    it("variables hold currency amounts and substitute the symbol", () => {
+      registerCurrencyUnits(rateMap({ USD: 1, NOK: 0.0915 }));
+      const result = evaluate(["salary = 65000 USD", "salary as NOK"]);
+      expect(result[1].value).toBeCloseTo(65000 / 0.0915, 4);
+      expect(result[1].display).toContain("kr");
+    });
+
+    it("rewrites `<number> as|to <currency>` as a unit literal", () => {
+      registerCurrencyUnits(rateMap({ USD: 1, EUR: 1.087 }));
+      // "150 as usd" should attach USD as the unit, not call the `to` operator
+      // (which mathjs only allows when the LHS is already a Unit).
+      const result = evaluate("150 as usd");
+      expect(result[0].error).toBeNull();
+      expect(result[0].value).toBeCloseTo(150, 4);
+      expect(result[0].display).toContain("$");
+    });
+
+    it("rewrites arithmetic expressions before applying a currency", () => {
+      registerCurrencyUnits(rateMap({ USD: 1, EUR: 1.087 }));
+      const result = evaluate("100 + 50 as USD");
+      expect(result[0].value).toBeCloseTo(150, 4);
+      expect(result[0].display).toContain("$");
+    });
+
+    it("accepts lowercase currency codes via aliases", () => {
+      registerCurrencyUnits(rateMap({ USD: 1, NOK: 0.0915 }));
+      const upper = evaluate("100 NOK to USD");
+      const lower = evaluate("100 nok to usd");
+      expect(lower[0].value).toBeCloseTo(upper[0].value!, 6);
+      expect(lower[0].display).toContain("$");
     });
   });
 });
