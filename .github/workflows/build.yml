@@ -24,6 +24,12 @@ jobs:
   build-and-test:
     name: Build & test
     runs-on: ubuntu-latest
+    # Least-privilege scope. `pull-requests: write` is needed by the coverage
+    # comment step and elevates Dependabot's GITHUB_TOKEN for the same step
+    # (Dependabot defaults to read-only regardless of repo settings).
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
