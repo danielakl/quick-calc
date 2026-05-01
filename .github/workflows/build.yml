@@ -72,8 +72,10 @@ jobs:
 
       # Coverage steps use `if: always()` so reports are uploaded even when
       # tests fail — this keeps the coverage history complete for trend tracking.
+      # Codecov is skipped for Dependabot PRs: the Dependabot secret scope is
+      # separate from Actions, and dep-bump diffs rarely shift coverage anyway.
       - name: Upload coverage to Codecov
-        if: always()
+        if: always() && github.actor != 'dependabot[bot]'
         uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5.5.4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
