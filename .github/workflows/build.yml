@@ -12,6 +12,13 @@ on:
         description: "Upload build output as artifact for downstream jobs"
         type: boolean
         default: false
+    secrets:
+      SNYK_TOKEN:
+        description: "Snyk API token for SCA + SAST scans"
+        required: true
+      CODECOV_TOKEN:
+        description: "Codecov upload token for coverage reports"
+        required: true
 
 jobs:
   build-and-test:

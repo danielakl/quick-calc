@@ -20,4 +20,8 @@ on:
 jobs:
   build-and-test:
     uses: ./.github/workflows/build.yml
-    secrets: inherit
+    # Pass only the secrets the build job actually needs. Cloudflare/release
+    # tokens are never required for PR validation and stay out of PR runs.
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
