@@ -1,0 +1,4 @@
+Contact: https://github.com/danielakl/quick-calc/security/advisories/new
+Expires: 2027-05-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://quick-calc.app/.well-known/security.txt
