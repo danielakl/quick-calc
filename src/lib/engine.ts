@@ -161,6 +161,12 @@ const ASSIGNMENT_RE = /^\s*([\p{L}_][\p{L}\p{N}_]*)\s*=/u;
 const COMMENT_RE = /^\s*(\/\/|#)/;
 /** Engine-injected variables referenced by name during free-var analysis. */
 const BUILTIN_VARS = new Set(["prev", "sum", "average"]);
+/** Identifier names rejected as assignment targets. The calculus and free-var
+ *  function-assignment branches write directly to the scope object, bypassing
+ *  mathjs's own scope-write guard — so we block these names ourselves to avoid
+ *  polluting the local scope's prototype chain (e.g. `__proto__ = derivate(x^2)`
+ *  setting scope's prototype to a UserFunc). */
+const RESERVED_ASSIGNMENT_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 /** Trailing "to %" / "as %" / "to percent" / "as percent" conversion. */
 const PERCENT_CONVERT_RE = /^(.+?)\s+(?:to|as)\s+(?:%|percent)\s*$/i;
 /** Trailing "<expr> to|as <unitName>" — captures the LHS and target unit identifier.
@@ -544,6 +550,10 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
           let result: unknown;
           let calcIsAssignment = false;
           if (isAssignNode(node) && isCalculusFnCall(node.value)) {
+            if (RESERVED_ASSIGNMENT_NAMES.has(node.object.name)) {
+              results.push(errorResult(`Cannot assign to reserved name "${node.object.name}"`));
+              continue;
+            }
             result = processCalculusCall(node.value, scope);
             scope[node.object.name] = result;
             calcIsAssignment = true;
@@ -570,6 +580,10 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
       if (isAssignNode(node)) {
         const freeVars = collectFreeVars(node.value, scope);
         if (freeVars.length > 0) {
+          if (RESERVED_ASSIGNMENT_NAMES.has(node.object.name)) {
+            results.push(errorResult(`Cannot assign to reserved name "${node.object.name}"`));
+            continue;
+          }
           const exprStr = node.value.toString();
           scope[node.object.name] = createUserFunc(exprStr, freeVars, node.value.compile(), scope);
           results.push({

@@ -272,6 +272,36 @@ describe("evaluate", () => {
     });
   });
 
+  describe("reserved-name assignment protection", () => {
+    it("blocks calculus assignment to __proto__", () => {
+      const results = evaluate("__proto__ = derivate(x^2)");
+      expect(results[0].error).toBe('Cannot assign to reserved name "__proto__"');
+      expect(results[0].value).toBe(null);
+    });
+
+    it("blocks calculus assignment to constructor", () => {
+      // `constructor` is also caught by the earlier built-in-function guard
+      // (Object.prototype.constructor is a function); accept either path.
+      const results = evaluate("constructor = derivate(x^2)");
+      expect(results[0].error).toMatch(
+        /Cannot assign to (reserved name|built-in function) "constructor"/,
+      );
+      expect(results[0].value).toBe(null);
+    });
+
+    it("blocks free-var function assignment to __proto__", () => {
+      const results = evaluate("__proto__ = x + 1");
+      expect(results[0].error).toBe('Cannot assign to reserved name "__proto__"');
+      expect(results[0].value).toBe(null);
+    });
+
+    it("does not pollute scope across lines", () => {
+      const results = evaluate(["__proto__ = derivate(x^2)", "1 + 1"]);
+      expect(results[0].error).toContain("reserved name");
+      expect(results[1].value).toBe(2);
+    });
+  });
+
   describe("error handling", () => {
     it("silently handles invalid expressions", () => {
       const results = evaluate("1 +");
