@@ -44,8 +44,9 @@ jobs:
         run: pnpm audit --audit-level=high
 
       # Snyk Open Source (SCA) — complements pnpm audit with Snyk's curated vuln DB
+      # snyk/actions has no semver tags; pinned to master HEAD SHA. Bump manually.
       - name: Snyk Open Source scan
-        uses: snyk/actions/node@master
+        uses: snyk/actions/node@9adf32b1121593767fc3c057af55b55db032dc04 # master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -53,7 +54,7 @@ jobs:
 
       # Snyk Code (SAST) — scans src/ for code-level vulnerabilities
       - name: Snyk Code scan
-        uses: snyk/actions/node@master
+        uses: snyk/actions/node@9adf32b1121593767fc3c057af55b55db032dc04 # master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -73,7 +74,7 @@ jobs:
       # tests fail — this keeps the coverage history complete for trend tracking.
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5.5.4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/coverage-final.json
@@ -81,7 +82,7 @@ jobs:
 
       - name: Coverage summary (PR comment)
         if: always()
-        uses: davelosert/vitest-coverage-report-action@v2
+        uses: davelosert/vitest-coverage-report-action@3c50566c523e04813df28de8f7c48dd97d663f1c # v2.11.2
         with:
           json-summary-path: coverage/coverage-summary.json
           json-final-path: coverage/coverage-final.json
