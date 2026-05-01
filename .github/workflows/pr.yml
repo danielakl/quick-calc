@@ -19,6 +19,7 @@ on:
 
 jobs:
   build-and-test:
+    name: Build & Test
     uses: ./.github/workflows/build.yml
     # "pull-requests: write" (used by the coverage comment step)
     # must be granted here too.
