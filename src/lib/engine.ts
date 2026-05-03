@@ -169,6 +169,12 @@ const BUILTIN_VARS = new Set(["prev", "sum", "average"]);
 const RESERVED_ASSIGNMENT_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 /** Trailing "to %" / "as %" / "to percent" / "as percent" conversion. */
 const PERCENT_CONVERT_RE = /^(.+?)\s+(?:to|as)\s+(?:%|percent)\s*$/i;
+/** Bare numeric percent literal like `50%` or `50 %`. mathjs already
+ *  evaluates the trailing `%` (so `50%` returns `0.5`); this regex
+ *  detects the input shape so we can format the display as `50%` rather
+ *  than `0.5`. Restricted to a single numeric literal so expressions like
+ *  `2 + 50%` (still a regular number arithmetically) keep numeric display. */
+const TRAILING_PERCENT_RE = /^\s*-?\d+(?:\.\d+)?(?:e[+-]?\d+)?\s*%\s*$/i;
 /** Trailing "<expr> to|as <unitName>" — captures the LHS and target unit identifier.
  *  Used to detect the case where LHS is a plain number and the target is a unit
  *  literal (e.g. `150 as usd`), so we can rewrite it to `(LHS) unitName`. */
@@ -481,6 +487,7 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
     // not followed by `(`. This lets users write "600 sec to min" naturally.
     const pctMatch = line.match(PERCENT_CONVERT_RE);
     const isPercentConvert = !!pctMatch;
+    const isTrailingPercent = !isPercentConvert && TRAILING_PERCENT_RE.test(line);
     let processed = (pctMatch ? pctMatch[1] : line)
       .replace(/\s+as\s+/g, " to ")
       .replace(/\bsec\b(?!\s*\()/g, "seconds")
@@ -539,11 +546,22 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
     }
 
     const applyPercent = (r: LineResult): LineResult => {
-      if (!isPercentConvert || r.value === null) {
+      if (r.value === null) {
         return r;
       }
-      const pct = r.value * 100;
-      return { ...r, value: pct, display: `${formatNumber(pct)}%` };
+      if (isPercentConvert) {
+        // `0.5 as %` — promote the fractional value to a percent magnitude.
+        const pct = r.value * 100;
+        return { ...r, value: pct, display: `${formatNumber(pct)}%` };
+      }
+      if (isTrailingPercent) {
+        // `50%` — mathjs already divided by 100; keep the fractional value
+        // for downstream arithmetic but render the display as the original
+        // percent form.
+        const pct = r.value * 100;
+        return { ...r, display: `${formatNumber(pct)}%` };
+      }
+      return r;
     };
 
     try {

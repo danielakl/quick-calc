@@ -670,6 +670,116 @@ describe("evaluate", () => {
     });
   });
 
+  describe("percentage", () => {
+    it("treats trailing `%` as percent", () => {
+      // No `to`/`in`/`as` keyword needed
+      const results = evaluate("50 %");
+      expect(results[0].value).toBe(0.5);
+      expect(results[0].display).toBe("50%");
+    });
+
+    it("treats trailing `%` as percent", () => {
+      // No `to`/`in`/`as` keyword needed
+      const results = evaluate("50%");
+      expect(results[0].value).toBe(0.5);
+      expect(results[0].display).toBe("50%");
+    });
+
+    it("converts trailing `as %`", () => {
+      const results = evaluate("0.5 as %");
+      expect(results[0].value).toBe(50);
+      expect(results[0].display).toBe("50%");
+    });
+
+    it("converts trailing `to %`", () => {
+      const results = evaluate("0.25 to %");
+      expect(results[0].value).toBe(25);
+      expect(results[0].display).toBe("25%");
+    });
+
+    it("converts trailing `as percent` (word form)", () => {
+      const results = evaluate("0.75 as percent");
+      expect(results[0].value).toBe(75);
+      expect(results[0].display).toBe("75%");
+    });
+
+    it("converts trailing `to percent` (word form)", () => {
+      const results = evaluate("0.4 to percent");
+      expect(results[0].value).toBe(40);
+      expect(results[0].display).toBe("40%");
+    });
+
+    it("matches `as percent` case-insensitively", () => {
+      const results = evaluate("0.5 AS PERCENT");
+      expect(results[0].display).toBe("50%");
+    });
+
+    it("renders zero as 0%", () => {
+      const results = evaluate("0 as %");
+      expect(results[0].value).toBe(0);
+      expect(results[0].display).toBe("0%");
+    });
+
+    it("renders negative values with leading sign", () => {
+      const results = evaluate("-0.5 as %");
+      expect(results[0].value).toBe(-50);
+      expect(results[0].display).toBe("-50%");
+    });
+
+    it("renders 1 as 100%", () => {
+      const results = evaluate("1 as %");
+      expect(results[0].display).toBe("100%");
+    });
+
+    it("renders values greater than 1 above 100%", () => {
+      const results = evaluate("2.5 as %");
+      expect(results[0].display).toBe("250%");
+    });
+
+    it("evaluates the LHS as an expression before applying percent", () => {
+      // 0.25 + 0.25 = 0.5 → 50%
+      const results = evaluate("0.25 + 0.25 as %");
+      expect(results[0].value).toBe(50);
+      expect(results[0].display).toBe("50%");
+    });
+
+    it("applies percent to a referenced variable", () => {
+      const results = evaluate(["x = 0.3", "x as %"]);
+      expect(results[1].value).toBeCloseTo(30);
+      expect(results[1].display).toBe("30%");
+    });
+
+    it("applies percent to `prev`", () => {
+      const results = evaluate(["0.6", "prev as %"]);
+      expect(results[1].display).toBe("60%");
+    });
+
+    it("formats large percent values with thousand separators", () => {
+      const results = evaluate("12345 as %");
+      expect(results[0].value).toBe(1234500);
+      expect(results[0].display).toBe("1,234,500%");
+    });
+
+    it("feeds prev with the multiplied value (×100), not the input", () => {
+      const results = evaluate(["0.5 as %", "prev"]);
+      expect(results[1].value).toBe(50);
+    });
+
+    it("does not apply percent when LHS is incomplete", () => {
+      const results = evaluate("1 + as %");
+      // The stripped LHS `1 +` fails to parse → silent empty result.
+      expect(results[0].value).toBe(null);
+      expect(results[0].display).toBe("");
+    });
+
+    it("does not match `%` used as the modulo operator", () => {
+      // `17 % 5` should evaluate to mod, not be treated as percent
+      const results = evaluate("17 % 5");
+      expect(results[0].value).toBe(2);
+      expect(results[0].display).toBe("2");
+    });
+  });
+
   describe("units", () => {
     it("multiplies a unit by a scalar", () => {
       const results = evaluate("350 cm * 3");
@@ -701,23 +811,6 @@ describe("evaluate", () => {
       const results = evaluate("30 sec as minutes");
       expect(results[0].value).toBe(0.5);
       expect(results[0].display).toBe("0.5 minutes");
-    });
-
-    it("converts to percent with `as %`", () => {
-      const results = evaluate("0.5 as %");
-      expect(results[0].value).toBe(50);
-      expect(results[0].display).toBe("50%");
-    });
-
-    it("converts to percent with `to %`", () => {
-      const results = evaluate("0.25 to %");
-      expect(results[0].value).toBe(25);
-      expect(results[0].display).toBe("25%");
-    });
-
-    it("converts to percent with the word `percent`", () => {
-      const results = evaluate("0.75 as percent");
-      expect(results[0].display).toBe("75%");
     });
 
     it("surfaces an error on mismatched units", () => {
