@@ -352,6 +352,101 @@ describe("evaluate", () => {
     });
   });
 
+  describe("constants", () => {
+    it("supports e", () => {
+      const results = evaluate("e");
+      expect(results[0].value).toBeCloseTo(Math.E);
+    });
+
+    it("supports tau", () => {
+      const results = evaluate("tau");
+      expect(results[0].value).toBeCloseTo(2 * Math.PI);
+    });
+
+    it("supports phi (golden ratio)", () => {
+      const results = evaluate("phi");
+      expect(results[0].value).toBeCloseTo((1 + Math.sqrt(5)) / 2);
+    });
+
+    it("supports lowercase infinity", () => {
+      const results = evaluate("infinity");
+      expect(results[0].value).toBe(Infinity);
+      expect(results[0].display).toBe("infinity");
+    });
+
+    it("accepts capitalized Infinity (case-insensitive input)", () => {
+      const results = evaluate("Infinity");
+      expect(results[0].value).toBe(Infinity);
+      expect(results[0].display).toBe("infinity");
+    });
+
+    it("accepts INFINITY in any case (case-insensitive input)", () => {
+      const results = evaluate("INFINITY");
+      expect(results[0].value).toBe(Infinity);
+      expect(results[0].display).toBe("infinity");
+    });
+
+    it("renders -infinity for negated infinity", () => {
+      const results = evaluate("-infinity");
+      expect(results[0].value).toBe(-Infinity);
+      expect(results[0].display).toBe("-infinity");
+    });
+
+    it("renders 1/0 as infinity", () => {
+      const results = evaluate("1 / 0");
+      expect(results[0].display).toBe("infinity");
+    });
+
+    it("uses infinity in arithmetic", () => {
+      const results = evaluate(["infinity - 1"]);
+      expect(results[0].value).toBe(Infinity);
+    });
+
+    it("does not rewrite identifiers containing the word infinity", () => {
+      const results = evaluate(["myInfinityVar = 5", "myInfinityVar + 1"]);
+      expect(results[0].value).toBe(5);
+      expect(results[1].value).toBe(6);
+    });
+  });
+
+  describe("booleans", () => {
+    it("renders true with value 1", () => {
+      const results = evaluate("true");
+      expect(results[0].value).toBe(1);
+      expect(results[0].display).toBe("true");
+    });
+
+    it("renders false with value 0", () => {
+      const results = evaluate("false");
+      expect(results[0].value).toBe(0);
+      expect(results[0].display).toBe("false");
+    });
+
+    it("renders comparison results", () => {
+      const results = evaluate(["3 == 3", "1 > 2"]);
+      expect(results[0].display).toBe("true");
+      expect(results[0].value).toBe(1);
+      expect(results[1].display).toBe("false");
+      expect(results[1].value).toBe(0);
+    });
+
+    it("renders logical not", () => {
+      const results = evaluate("not true");
+      expect(results[0].display).toBe("false");
+      expect(results[0].value).toBe(0);
+    });
+
+    it("feeds prev with boolean coercion", () => {
+      const results = evaluate(["true", "prev + 4"]);
+      expect(results[1].value).toBe(5);
+    });
+
+    it("feeds sum with boolean coercion", () => {
+      const results = evaluate(["true", "false", "true", "sum"]);
+      expect(results[3].value).toBe(2);
+    });
+  });
+
   describe("derivative", () => {
     it("inline: returns constant for derivative of linear", () => {
       const results = evaluate("derivate(2 * x)");

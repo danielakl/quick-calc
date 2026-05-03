@@ -9,6 +9,7 @@ A notepad-style calculator that runs entirely in your browser. Type math express
 
 - **Line-by-line evaluation** — each line is an independent expression, evaluated top to bottom
 - **Variables** — assign values with `x = 42` and reference them in later lines
+- **Constants** — `pi`, `e`, `tau`, `phi`, `infinity` (case-insensitive on input, displayed lowercase), `true`, `false`
 - **Built-in helpers** — `prev` (previous result), `sum` (running total), `average` (running average)
 - **Custom functions** — define with `f = x^2 + 1` or `f(x) = x^2 + 1`, then call `f(3)`
 - **Derivatives** — `derivate(f)`, `derive(f)`, or `derivative(f)` for symbolic differentiation

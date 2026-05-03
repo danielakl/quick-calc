@@ -135,7 +135,17 @@ export default function HelpModal() {
 
           <Section title="Constants">
             <div className="space-y-0.5">
-              <ExampleGroup lines={[{ input: "pi" }, { input: "e" }]} />
+              <ExampleGroup
+                lines={[
+                  { input: "pi" },
+                  { input: "e" },
+                  { input: "tau" },
+                  { input: "phi" },
+                  { input: "infinity" },
+                  { input: "true" },
+                  { input: "false" },
+                ]}
+              />
             </div>
           </Section>
 

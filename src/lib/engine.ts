@@ -304,7 +304,19 @@ function mapResult(result: unknown, isAssignment: boolean, isFuncAssign: boolean
     }
     return errorResult(`${name} requires ${minArgs} ${minArgs === 1 ? "argument" : "arguments"}`);
   }
-  // Catch-all for booleans, strings, or other mathjs result types.
+  // Booleans render as their literal form. The numeric coercion (`true → 1`,
+  // `false → 0`) lets comparison results feed `prev` / `sum` / `average`.
+  if (typeof result === "boolean") {
+    return {
+      value: result ? 1 : 0,
+      display: result ? "true" : "false",
+      error: null,
+      isAssignment,
+    };
+  }
+  // Catch-all for strings, complex numbers, arrays, or other mathjs result
+  // types. These render as `String(result)` but do not contribute to numeric
+  // running totals.
   return {
     value: null,
     display: result != null ? String(result) : "",
@@ -472,7 +484,8 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
     let processed = (pctMatch ? pctMatch[1] : line)
       .replace(/\s+as\s+/g, " to ")
       .replace(/\bsec\b(?!\s*\()/g, "seconds")
-      .replace(/\bmin\b(?!\s*\()/g, "minutes");
+      .replace(/\bmin\b(?!\s*\()/g, "minutes")
+      .replace(/\binfinity\b/gi, "Infinity");
 
     // mathjs's `to` operator requires a Unit on the LHS — `150 to usd` errors
     // because 150 is a plain number. If the LHS evaluates to a number and the

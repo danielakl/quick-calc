@@ -6,10 +6,10 @@ const UNIT_MAGNITUDE_RE = /^(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)(.*)$/i;
 export function formatNumber(value: number): string {
   if (!Number.isFinite(value)) {
     if (value === Infinity) {
-      return "Infinity";
+      return "infinity";
     }
     if (value === -Infinity) {
-      return "-Infinity";
+      return "-infinity";
     }
     return "NaN";
   }

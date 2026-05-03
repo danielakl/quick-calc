@@ -7,12 +7,12 @@ const unit = (expr: string) => math.evaluate(expr) as import("mathjs").Unit;
 
 describe("formatNumber", () => {
   describe("special values", () => {
-    it("returns 'Infinity' for Infinity", () => {
-      expect(formatNumber(Infinity)).toBe("Infinity");
+    it("returns 'infinity' (lowercase) for Infinity", () => {
+      expect(formatNumber(Infinity)).toBe("infinity");
     });
 
-    it("returns '-Infinity' for -Infinity", () => {
-      expect(formatNumber(-Infinity)).toBe("-Infinity");
+    it("returns '-infinity' (lowercase) for -Infinity", () => {
+      expect(formatNumber(-Infinity)).toBe("-infinity");
     });
 
     it("returns 'NaN' for NaN", () => {
