@@ -184,7 +184,7 @@ describe("evaluate", () => {
     });
   });
 
-  describe("builtins: prev, sum, average", () => {
+  describe("builtins: prev, sum, avg", () => {
     it("prev references the last numeric result", () => {
       const results = evaluate(["42", "prev + 8"]);
       expect(values(results)).toEqual([42, 50]);
@@ -195,21 +195,101 @@ describe("evaluate", () => {
       expect(results[2].value).toBe(20);
     });
 
-    it("sum accumulates all numeric results", () => {
-      const results = evaluate(["10", "20", "30", "sum"]);
-      expect(results[3].value).toBe(60);
-    });
-
-    it("average computes running average", () => {
-      const results = evaluate(["10", "20", "30", "average"]);
-      expect(results[3].value).toBe(20);
-    });
-
     it("prev is not set before any numeric result", () => {
       // A comment followed by prev — prev should not be available
       const results = evaluate(["// nothing yet", "prev"]);
       // prev is undefined, mathjs will throw, result is silently skipped
       expect(results[1].value).toBe(null);
+    });
+
+    it("prev preserves units across lines", () => {
+      const results = evaluate(["5 km", "prev + 100 m"]);
+      expect(results[1].display).toBe("5.1 km");
+    });
+
+    it("sum accumulates all numeric results", () => {
+      const results = evaluate(["10", "20", "30", "sum"]);
+      expect(results[3].value).toBe(60);
+    });
+
+    it("sum aggregates compatible units", () => {
+      const results = evaluate(["5 km", "100 m", "sum"]);
+      expect(results[2].display).toBe("5.1 km");
+    });
+
+    it("sum is not set when units are incompatible", () => {
+      const results = evaluate(["5 km", "2 kg", "sum"]);
+      expect(results[2].value).toBeNull();
+    });
+
+    it("average computes running average", () => {
+      const results = evaluate(["10", "20", "30", "avg"]);
+      expect(results[3].value).toBe(20);
+    });
+
+    it("average aggregates compatible units", () => {
+      const results = evaluate(["10 m", "20 m", "30 m", "average"]);
+      expect(results[3].display).toBe("20 m");
+    });
+
+    it("avg works with units", () => {
+      const results = evaluate(["10 m", "20 m", "avg"]);
+      expect(results[2].display).toBe("15 m");
+    });
+
+    it("avg is not set when units are incompatible", () => {
+      const results = evaluate(["5 km", "2 kg", "avg"]);
+      expect(results[2].value).toBeNull();
+    });
+
+    it("median picks the middle running value", () => {
+      const results = evaluate(["1", "10", "100", "median"]);
+      expect(results[3].value).toBe(10);
+    });
+
+    it("mode picks the most frequent running value", () => {
+      const results = evaluate(["1", "2", "2", "3", "mode"]);
+      // mathjs returns mode as an array; the first element is the mode.
+      expect(results[4].display).toContain("2");
+    });
+
+    it("aggregate names are case-insensitive", () => {
+      const results = evaluate(["10", "20", "30", "Sum", "AVG", "Average"]);
+      expect(results[3].value).toBe(60);
+      expect(results[4].value).toBe(20);
+      expect(results[5].value).toBe(20);
+    });
+  });
+
+  describe("aggregate function-call form", () => {
+    it("avg(1, 2, 3) calls mathjs mean", () => {
+      const results = evaluate("avg(1, 2, 3)");
+      expect(results[0].value).toBe(2);
+    });
+
+    it("average(1, 2, 3) calls mathjs mean", () => {
+      const results = evaluate("average(1, 2, 3)");
+      expect(results[0].value).toBe(2);
+    });
+
+    it("sum(1, 2, 3) calls mathjs sum", () => {
+      const results = evaluate("sum(1, 2, 3)");
+      expect(results[0].value).toBe(6);
+    });
+
+    it("median(1, 2, 3, 4) calls mathjs median", () => {
+      const results = evaluate("median(1, 2, 3, 4)");
+      expect(results[0].value).toBe(2.5);
+    });
+
+    it("avg(5 m, 10 m, 15 m) preserves units", () => {
+      const results = evaluate("avg(5 m, 10 m, 15 m)");
+      expect(results[0].display).toBe("10 m");
+    });
+
+    it("call form is independent of running values", () => {
+      const results = evaluate(["100", "200", "avg(1, 2, 3)"]);
+      expect(results[2].value).toBe(2);
     });
   });
 

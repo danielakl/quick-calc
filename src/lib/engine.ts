@@ -6,6 +6,7 @@ import {
   isUnit,
   type SymbolNode,
   type MathNode,
+  type Unit,
 } from "mathjs";
 import { CurrencyCode } from "./currencies";
 import { formatNumber, formatUnit, extractUnitMagnitude } from "./formatter";
@@ -25,6 +26,10 @@ import { isEmpty } from "./utils/stringUtils";
 
 const math = create(all, {});
 const mathIntegral = createIntegral(math);
+
+// Register `avg` and `average` as aliases for mathjs `mean` so users can call
+// `avg(1, 2, 3)` / `average(1, 2, 3)` in addition to the bare-line form.
+math.import({ avg: math.mean, average: math.mean }, { override: false, silent: true });
 
 // ─── Currency unit registration ──────────────────────────────────────────────
 // Currencies are registered as mathjs units anchored to USD (baseName "currency")
@@ -159,8 +164,31 @@ const SCOPE_FUNCTIONS: Record<string, unknown> = Object.fromEntries(
 const ASSIGNMENT_RE = /^\s*([\p{L}_][\p{L}\p{N}_]*)\s*=/u;
 /** Matches lines that are comments (// or #), including indented ones. */
 const COMMENT_RE = /^\s*(\/\/|#)/;
-/** Engine-injected variables referenced by name during free-var analysis. */
-const BUILTIN_VARS = new Set(["prev", "sum", "average"]);
+/** Maps the user-facing bare aggregate name to its mathjs function name. The
+ *  bare form (e.g. `avg` on its own line) is preprocessed into a function call
+ *  over the running values (similar to how UNIT_APPLY_RE rewrites unit literals).
+ *  The function-call form (`avg(1, 2, 3)`) is handled by mathjs directly. */
+const AGGREGATE_FN_MAP = {
+  sum: "sum",
+  mean: "mean",
+  avg: "mean",
+  average: "mean",
+  median: "median",
+  mode: "mode",
+} as const;
+const AGGREGATE_NAMES = Object.keys(AGGREGATE_FN_MAP);
+/** Bare aggregate identifier as the entire line — case-insensitive. */
+const BARE_AGGREGATE_RE = new RegExp(`^\\s*(${AGGREGATE_NAMES.join("|")})\\s*$`, "i");
+/** Lowercases any aggregate name so users can type `Sum`, `AVG`, etc. and
+ *  still hit the mathjs function (mathjs is case-sensitive). */
+const AGGREGATE_NAME_RE = new RegExp(`\\b(?:${AGGREGATE_NAMES.join("|")})\\b`, "gi");
+/** Scope key under which the running values are exposed for the rewritten
+ *  bare aggregate call. Prefixed to avoid colliding with user identifiers. */
+const AGGREGATE_VALUES_KEY = "__qc_running_values";
+/** Reserved bare-identifier names — `prev` resolves to a value in scope, the
+ *  aggregate names are rewritten before evaluation. Used by `collectFreeVars`
+ *  to keep these out of the auto-detected free-variable list. */
+const BUILTIN_NAMES = new Set(["prev", AGGREGATE_VALUES_KEY, ...AGGREGATE_NAMES]);
 /** Identifier names rejected as assignment targets. The calculus and free-var
  *  function-assignment branches write directly to the scope object, bypassing
  *  mathjs's own scope-write guard — so we block these names ourselves to avoid
@@ -221,7 +249,7 @@ function collectFreeVars(
       !seen.has(name) &&
       !(name in scope) &&
       !(name in mathNamespace) &&
-      !BUILTIN_VARS.has(name) &&
+      !BUILTIN_NAMES.has(name) &&
       !isUnitName(name) &&
       !exclude?.has(name)
     ) {
@@ -331,6 +359,44 @@ function mapResult(result: unknown, isAssignment: boolean, isFuncAssign: boolean
   };
 }
 
+/** Single value that flows through `prev` and the running aggregates. Booleans
+ *  and BigNumber/Fraction results are coerced to plain numbers via
+ *  `LineResult.value` upstream; only `Unit` values are kept in their original
+ *  form so unit arithmetic survives across lines. */
+type RunningValue = number | Unit;
+
+/** Set up `prev` in the evaluation scope. The aggregate names (`sum`, `avg`,
+ *  ...) are not injected as values — they're rewritten before parsing
+ *  by {@link rewriteBareAggregate}, so they parse as ordinary mathjs function
+ *  calls instead. */
+function injectPrev(target: Record<string, unknown>, prev: RunningValue | null): void {
+  if (prev !== null) {
+    target.prev = prev;
+  }
+}
+
+/** If the line is a bare aggregate identifier (`sum` / `avg` / `median` / ...),
+ *  rewrite it to the matching mathjs call and stash the running values in
+ *  scope. Returns the rewritten line, or the original when no rewrite applies.
+ *  Returns `null` to signal "bare aggregate but nothing to aggregate yet" so
+ *  the caller can produce a silent empty result. */
+function rewriteBareAggregate(
+  line: string,
+  scope: Record<string, unknown>,
+  values: readonly RunningValue[],
+): string | null {
+  const match = line.match(BARE_AGGREGATE_RE);
+  if (!match) {
+    return line;
+  }
+  if (values.length === 0) {
+    return null;
+  }
+  const fnName = AGGREGATE_FN_MAP[match[1].toLowerCase() as keyof typeof AGGREGATE_FN_MAP];
+  scope[AGGREGATE_VALUES_KEY] = values;
+  return `${fnName}(${AGGREGATE_VALUES_KEY})`;
+}
+
 // ─── Calculus call processing ───────────────────────────────────────────────
 
 /** Convert a symbolic calculus result to a number (if constant) or UserFunc. */
@@ -344,7 +410,7 @@ function convertCalculusResult(
   const seen = new Set<string>();
   for (const n of resultNode.filter(isSymbolNode)) {
     const name = (n as SymbolNode).name;
-    if (!seen.has(name) && !(name in mathNamespace) && !BUILTIN_VARS.has(name)) {
+    if (!seen.has(name) && !(name in mathNamespace) && !BUILTIN_NAMES.has(name)) {
       freeVars.push(name);
       seen.add(name);
     }
@@ -471,8 +537,11 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
 
   const scope: Record<string, unknown> = { ...SCOPE_FUNCTIONS };
   const results: LineResult[] = [];
-  let prevValue: number | null = null;
-  const numericValues: number[] = [];
+  // Tracked values that feed `prev` and the running aggregates. Stored as
+  // raw `Unit` (when the line produced one) or as the formatted numeric
+  // magnitude (everything else) so unit math flows through across lines.
+  let prevValue: RunningValue | null = null;
+  const runningValues: RunningValue[] = [];
 
   for (const line of lines) {
     // Skip empty lines and comments.
@@ -492,7 +561,26 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
       .replace(/\s+as\s+/g, " to ")
       .replace(/\bsec\b(?!\s*\()/g, "seconds")
       .replace(/\bmin\b(?!\s*\()/g, "minutes")
-      .replace(/\binfinity\b/gi, "Infinity");
+      .replace(/\binfinity\b/gi, "Infinity")
+      // Lowercase any aggregate identifier (`Sum`, `AVG`, `Average`, ...) so
+      // mathjs's case-sensitive lookup hits the registered functions.
+      .replace(AGGREGATE_NAME_RE, (m) => m.toLowerCase());
+
+    // Inject `prev` so anything below that references it can resolve.
+    injectPrev(scope, prevValue);
+
+    // Bare aggregate (`sum` / `avg` / `median` / ...) — rewrite to a function
+    // call over the running values. `null` means there's nothing to aggregate
+    // yet, so emit a silent empty result instead of letting mathjs error.
+    const rewritten = rewriteBareAggregate(processed, scope, runningValues);
+    if (rewritten === null) {
+      results.push(emptyResult());
+      continue;
+    }
+    // Bare aggregate results don't feed back into the running values — `avg`
+    // after `sum` should average the inputs, not the inputs plus the sum.
+    const isBareAggregate = rewritten !== processed;
+    processed = rewritten;
 
     // mathjs's `to` operator requires a Unit on the LHS — `150 to usd` errors
     // because 150 is a plain number. If the LHS evaluates to a number and the
@@ -502,17 +590,8 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
     // side effects.
     const unitApplyMatch = processed.match(UNIT_APPLY_RE);
     if (unitApplyMatch && isUnitName(unitApplyMatch[2])) {
-      // Inject prev/sum/average so probing expressions that reference them works.
-      const probeScope: Record<string, unknown> = { ...scope };
-      if (prevValue !== null) {
-        probeScope.prev = prevValue;
-      }
-      if (numericValues.length > 0) {
-        probeScope.sum = numericValues.reduce((total, value) => total + value, 0);
-        probeScope.average = (probeScope.sum as number) / numericValues.length;
-      }
       try {
-        const lhsValue = math.evaluate(unitApplyMatch[1], probeScope);
+        const lhsValue = math.evaluate(unitApplyMatch[1], scope);
         if (typeof lhsValue === "number") {
           processed = `(${unitApplyMatch[1]}) ${unitApplyMatch[2]}`;
         }
@@ -520,17 +599,6 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
         // LHS doesn't evaluate cleanly — leave the original processed string;
         // mathjs will surface its own error if the conversion is invalid.
       }
-    }
-
-    // Inject engine-managed variables.
-    // prev is only available after at least one numeric result.
-    // sum and average are only available after at least one numeric result.
-    if (prevValue !== null) {
-      scope.prev = prevValue;
-    }
-    if (numericValues.length > 0) {
-      scope.sum = numericValues.reduce((a, b) => a + b, 0);
-      scope.average = (scope.sum as number) / numericValues.length;
     }
 
     // Guard variable assignment to built-in functions (e.g. sqrt = 5).
@@ -594,9 +662,10 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
           const lineResult = applyPercent(
             mapResult(result, calcIsAssignment || isAssignment, false),
           );
-          if (lineResult.value !== null) {
-            prevValue = lineResult.value;
-            numericValues.push(lineResult.value);
+          if (lineResult.value !== null && !isBareAggregate) {
+            const tracked: RunningValue = isUnit(result) ? result : lineResult.value;
+            prevValue = tracked;
+            runningValues.push(tracked);
           }
           results.push(lineResult);
         } catch (e) {
@@ -639,10 +708,16 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
 
       const lineResult = applyPercent(mapResult(result, isAssignment, isFuncAssignNode(node)));
 
-      // Track numeric values for prev/sum/average.
-      if (lineResult.value !== null) {
-        prevValue = lineResult.value;
-        numericValues.push(lineResult.value);
+      // Track results for prev / running aggregates. Prefer the raw mathjs
+      // result (so `Unit`s flow through), but fall back to the formatted
+      // `lineResult.value` when the result isn't a `Unit` — that path also
+      // preserves the percent-override magnitude (e.g. "0.5 as %" tracks 50,
+      // not 0.5). Bare aggregate lines don't contribute so chained calls
+      // (`sum` then `avg`) average the inputs, not the inputs plus the sum.
+      if (lineResult.value !== null && !isBareAggregate) {
+        const tracked: RunningValue = isUnit(result) ? result : lineResult.value;
+        prevValue = tracked;
+        runningValues.push(tracked);
       }
 
       results.push(lineResult);

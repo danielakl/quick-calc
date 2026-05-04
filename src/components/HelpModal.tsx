@@ -212,7 +212,7 @@ export default function HelpModal() {
                     result: "total of all results so far",
                   },
                   {
-                    input: "average",
+                    input: "avg",
                     result: "mean of all results so far",
                   },
                 ]}

@@ -1,6 +1,6 @@
 # Quick Calc
 
-Notepad-style calculator web app. Users type math expressions (one per line) and see results in a right-hand panel. Supports variables, assignments, `prev`/`sum`/`average` builtins, and shareable URLs via compressed query params.
+Notepad-style calculator web app. Users type math expressions (one per line) and see results in a right-hand panel. Supports variables, assignments, `prev`/`sum`/`avg` builtins, and shareable URLs via compressed query params.
 
 ## Stack
 
