@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Temporal } from "temporal-polyfill";
-import { CURRENCIES, CURRENCY_SYMBOLS, type CurrencyCode } from "@/lib/currencies";
+import { CURRENCIES, type CurrencyCode } from "@/lib/currencies";
 import {
   type Status,
   derivePerUnitFromUsd,
@@ -247,5 +247,3 @@ export default function CurrencyStatus({ now }: Props) {
     </>
   );
 }
-
-export { CURRENCY_SYMBOLS };

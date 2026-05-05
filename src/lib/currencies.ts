@@ -377,16 +377,10 @@ export const CURRENCIES: readonly Currency[] = [
   { code: CurrencyCode.DOGE, name: "Dogecoin", symbol: "Ð" },
 ];
 
-export const SUPPORTED_CODES: ReadonlySet<string> = new Set(
-  CURRENCIES.map((currency) => currency.code),
-);
-
-export const CURRENCY_NAMES: Readonly<Record<string, string>> = Object.fromEntries(
-  CURRENCIES.map((currency) => [currency.code, currency.name]),
-);
-
-export const CURRENCY_SYMBOLS: Readonly<Record<string, string>> = Object.fromEntries(
-  CURRENCIES.filter(
-    (currency): currency is Currency & { symbol: string } => currency.symbol !== undefined,
-  ).map((currency) => [currency.code, currency.symbol]),
-);
+/** Parse an arbitrary string into a {@link CurrencyCode}. Returns `undefined`
+ *  when the input doesn't match any known code. Case-insensitive — `usd`,
+ *  `USD`, and `Usd` all parse to {@link CurrencyCode.USD}. */
+export function parseCurrencyCode(value: string): CurrencyCode | undefined {
+  const upper = value.toUpperCase();
+  return Object.values(CurrencyCode).find((code) => code === upper);
+}
