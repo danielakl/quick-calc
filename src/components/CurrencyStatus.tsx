@@ -201,11 +201,11 @@ export default function CurrencyStatus({ now }: Props) {
                   <tr
                     key={row.code}
                     data-testid={`currency-row-${row.code}`}
-                    onClick={() => setBase(row.code as CurrencyCode)}
+                    onClick={() => setBase(row.code)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        setBase(row.code as CurrencyCode);
+                        setBase(row.code);
                       }
                     }}
                     tabIndex={0}
