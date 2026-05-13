@@ -1,4 +1,4 @@
-import { CURRENCY_SYMBOLS } from "./currencies";
+import { CURRENCIES } from "./currencies";
 import type { Unit } from "mathjs";
 
 const UNIT_MAGNITUDE_RE = /^(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)(.*)$/i;
@@ -46,9 +46,9 @@ export function formatUnit(unit: Unit): string {
   const suffix = match[2];
   const trimmedSuffix = suffix.trim();
   const upperSuffix = trimmedSuffix.toUpperCase();
-  const symbol = CURRENCY_SYMBOLS[upperSuffix];
-  if (symbol) {
-    return `${magnitude} ${symbol}`;
+  const currency = CURRENCIES.find((c) => c.code === upperSuffix);
+  if (currency !== undefined) {
+    return `${magnitude} ${currency.symbol ?? currency.code}`;
   }
   return magnitude + suffix;
 }
