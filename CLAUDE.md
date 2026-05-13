@@ -41,11 +41,6 @@ pnpm format       # Prettier — write
 pnpm format:check # Prettier — check
 ```
 
-## Git hooks (husky)
-
-- **pre-commit:** `lint-staged` (eslint --fix + prettier on staged files)
-- **pre-push:** `typecheck` + `test`
-
 ## Conventions
 
 - Client-side only — all components use `"use client"`. Keep it this way to minimize hosting costs.
