@@ -46,24 +46,30 @@ function constValue(node: MathNode): number | null {
       const v = constValue(op.args[0]);
       return v !== null ? -v : null;
     }
+
     if (op.args.length === 2) {
       const l = constValue(op.args[0]);
       const r = constValue(op.args[1]);
       if (l === null || r === null) {
         return null;
       }
+
       if (op.fn === "add") {
         return l + r;
       }
+
       if (op.fn === "subtract") {
         return l - r;
       }
+
       if (op.fn === "multiply") {
         return l * r;
       }
+
       if (op.fn === "divide") {
         return r !== 0 ? l / r : null;
       }
+
       if (op.fn === "pow") {
         return Math.pow(l, r);
       }
