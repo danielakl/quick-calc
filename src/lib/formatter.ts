@@ -203,7 +203,7 @@ export function formatUnit(unit: Unit): string {
     }
   }
 
-  return formatNumber(magnitude) + suffix;
+  return `${formatNumber(magnitude)} ${suffix}`.trim();
 }
 
 function formatCurrency(magnitude: number, code: CurrencyCode): string | null {
