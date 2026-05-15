@@ -193,9 +193,8 @@ export function formatUnit(unit: Unit): string {
     return unit.toString();
   }
   const magnitude = Number(match[1]);
-  const suffix = match[2];
-  const trimmedSuffix = suffix.trim();
-  const currencyCode = parseCurrencyCode(trimmedSuffix);
+  const suffix = match[2]?.trim();
+  const currencyCode = parseCurrencyCode(suffix);
 
   if (currencyCode !== undefined) {
     const currencyResult = formatCurrency(magnitude, currencyCode);
