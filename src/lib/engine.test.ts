@@ -1,6 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect } from "vitest";
+import { useFormatStore } from "@/stores/useFormatStore";
 import { CurrencyCode } from "./currencies";
 import { evaluate, LineResult, registerCurrencyUnits } from "./engine";
+
+afterEach(() => {
+  // Reset locale-aware parsing state so locale tests don't leak into the
+  // (en-US-assuming) tests that follow.
+  useFormatStore.getState().reset();
+  localStorage.clear();
+});
 
 function values(results: LineResult[]) {
   return results.map((r) => r.value);
@@ -884,13 +892,14 @@ describe("evaluate", () => {
     it("converts units with `to`", () => {
       const results = evaluate("600 sec to min");
       expect(results[0].value).toBe(10);
-      expect(results[0].display).toBe("10 minutes");
+      // Intl unit format produces the locale's short form (en-US: "min").
+      expect(results[0].display).toMatch(/^10\s+min/);
     });
 
     it("converts units with `as`", () => {
       const results = evaluate("30 sec as minutes");
       expect(results[0].value).toBe(0.5);
-      expect(results[0].display).toBe("0.5 minutes");
+      expect(results[0].display).toMatch(/^0\.5\s+min/);
     });
 
     it("surfaces an error on mismatched units", () => {
@@ -908,6 +917,7 @@ describe("evaluate", () => {
 
     it("applies thousand separators to unit magnitudes", () => {
       const results = evaluate("12345 inch");
+      // mathjs preserves "inch"; only the magnitude goes through formatNumber.
       expect(results[0].display).toBe("12,345 inch");
     });
 
@@ -1004,6 +1014,55 @@ describe("evaluate", () => {
       const lower = evaluate("100 nok to usd");
       expect(lower[0].value).toBeCloseTo(upper[0].value!, 6);
       expect(lower[0].display).toContain("$");
+    });
+  });
+
+  describe("locale-aware number parsing", () => {
+    it("flips workbook to comma-decimal when any line votes (heuristic)", () => {
+      const result = evaluate("1,5 + 2,5");
+      expect(result[0].value).toBe(4);
+    });
+
+    it("displays output using the heuristic-derived comma decimal", () => {
+      // `1,5 + 1` → 2.5 — must render as `2,5`, not `2.5`, because the
+      // heuristic flipped the workbook to comma-decimal.
+      const result = evaluate("1,5 + 1");
+      expect(result[0].value).toBe(2.5);
+      expect(result[0].display).toBe("2,5");
+    });
+
+    it("explicit de-DE format parses `1.234,56` as 1234.56", () => {
+      useFormatStore.getState().setNumberFormatId("de-DE");
+      const result = evaluate("1.234,56 * 2");
+      expect(result[0].value).toBe(2469.12);
+    });
+
+    it("explicit de-DE format formats output as `1.234,5`", () => {
+      useFormatStore.getState().setNumberFormatId("de-DE");
+      const result = evaluate("1234.5");
+      expect(result[0].display).toBe("1.234,5");
+    });
+
+    it("preserves space-separated function args in any format", () => {
+      expect(evaluate("min(1, 5)")[0].value).toBe(1);
+      useFormatStore.getState().setNumberFormatId("de-DE");
+      expect(evaluate("min(1, 5)")[0].value).toBe(1);
+    });
+
+    it("`min(1,5)` is a single arg in comma-decimal mode (by spec)", () => {
+      useFormatStore.getState().setNumberFormatId("de-DE");
+      const result = evaluate("min(1,5)");
+      expect(result[0].value).toBe(1.5);
+    });
+
+    it("`1,234` ambiguous → en-US default reads it as 1234", () => {
+      const result = evaluate("1,234");
+      expect(result[0].value).toBe(1234);
+    });
+
+    it("auto: heuristic flips workbook on first comma-decimal line", () => {
+      const result = evaluate(["x = 1,5", "y = 100", "x + y"]);
+      expect(result[2].value).toBe(101.5);
     });
   });
 });

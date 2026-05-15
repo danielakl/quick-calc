@@ -2,15 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCurrencyRates } from "@/hooks/useCurrencyRates";
+import { useFormatVersion } from "@/hooks/useFormatVersion";
 import { useNow } from "@/hooks/useNow";
 import { evaluate } from "@/lib/engine";
 import { isEmpty } from "@/lib/utils/stringUtils";
 import { initFromURL, useCalcStore } from "@/stores/useCalcStore";
 import { initCurrencyStore } from "@/stores/useCurrencyStore";
+import { initFormatStore } from "@/stores/useFormatStore";
 import { initTheme } from "@/stores/useThemeStore";
 import CurrencyStatus from "./CurrencyStatus";
 import HelpModal from "./HelpModal";
 import ResultLine from "./ResultLine";
+import SettingsModal from "./SettingsModal";
 import ThemeToggle from "./ThemeToggle";
 
 const emptySubscribe = () => () => {};
@@ -18,6 +21,7 @@ const emptySubscribe = () => () => {};
 export default function Calculator() {
   const { text, setText } = useCalcStore();
   const ratesVersion = useCurrencyRates();
+  const formatVersion = useFormatVersion();
   const now = useNow();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -32,6 +36,7 @@ export default function Calculator() {
     initTheme();
     initFromURL();
     initCurrencyStore();
+    initFormatStore();
   }, []);
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
@@ -48,7 +53,7 @@ export default function Calculator() {
   const results = useMemo(
     () => evaluate(text),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [text, ratesVersion],
+    [text, ratesVersion, formatVersion],
   );
 
   const hasResults = results.some((r) => !isEmpty(r.display) || !isEmpty(r.error));
@@ -72,6 +77,7 @@ export default function Calculator() {
           <header className="flex items-center justify-end gap-1 px-6 py-3">
             <CurrencyStatus now={now} />
             <HelpModal />
+            <SettingsModal />
             <ThemeToggle />
           </header>
 
