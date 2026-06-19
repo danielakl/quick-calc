@@ -15,8 +15,10 @@ minimumReleaseAge: 4320
 
 minimumReleaseAgeExclude:
 
+# Overrides to resolve security vulnerabilities
 overrides:
-  postcss@<8.5.10: 8.5.10
+  postcss@<8.5.10: 8.5.15
+  vite@>=8.0.0 <=8.0.15: 8.0.16
 
 # Fail install if unapproved packages try to run lifecycle scripts
 strictDepBuilds: true
@@ -24,3 +26,7 @@ strictDepBuilds: true
 # Prevent installing packages whose trust level has decreased
 # (e.g. previously signed via Trusted Publisher, now unsigned)
 trustPolicy: no-downgrade
+
+trustPolicyExclude:
+  - eslint-import-resolver-typescript@3.10.1
+  - semver@6.3.1
