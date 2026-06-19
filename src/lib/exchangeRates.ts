@@ -4,6 +4,7 @@
 
 import { Temporal } from "temporal-polyfill";
 import { CURRENCIES, CurrencyCode } from "./currencies";
+import { getBrowserLanguages } from "./locale";
 import { isPlainObject } from "./typeGuards";
 import { millisecondsBetween } from "./utils/dateUtils";
 import { sanitize } from "./utils/sanitizeString";
@@ -265,12 +266,7 @@ export function formatRelative(timestamp: Temporal.Instant | null, now: Temporal
 }
 
 export function detectLocaleCurrency(): CurrencyCode {
-  const languages: readonly string[] =
-    typeof navigator === "undefined"
-      ? ["en-US"]
-      : navigator.languages?.length
-        ? navigator.languages
-        : [navigator.language ?? "en-US"];
+  const languages = getBrowserLanguages();
 
   for (const language of languages) {
     const region = language.split("-")[1];

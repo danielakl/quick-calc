@@ -8,9 +8,12 @@ import {
   type MathNode,
   type Unit,
 } from "mathjs";
+import { getExplicitNumberFormat } from "@/stores/useFormatStore";
 import { CurrencyCode } from "./currencies";
-import { formatNumber, formatUnit, extractUnitMagnitude } from "./formatter";
+import { formatNumber, formatUnit, extractUnitMagnitude, setActiveSeparators } from "./formatter";
 import { createIntegral } from "./integral";
+import { detectDefaultFormat } from "./numberFormats";
+import { normalizeLine, pickSeparators } from "./numberParser";
 import {
   isUserFunc,
   isFuncAssignNode,
@@ -530,10 +533,25 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
   const textArray: string[] =
     text.length === 1 && Array.isArray(text[0]) ? text[0] : (text as string[]);
   const sanitized: string[] = textArray.map((t) => sanitize(t) ?? "");
-  const lines: string[] = sanitized
+  const rawLines: string[] = sanitized
     .map((s) => s.split("\n"))
     .flatMap((s) => s)
     .map((l) => l.trim());
+
+  // Resolve the active decimal/group separators once per evaluation and
+  // rewrite every numeric literal to canonical US form before mathjs sees
+  // it. Priority: explicit user format → per-evaluation heuristic →
+  // navigator-derived format → en-US fallback. See {@link pickSeparators}.
+  const sep = pickSeparators(rawLines, {
+    explicitFormat: getExplicitNumberFormat(),
+    defaultFormat: detectDefaultFormat(),
+  });
+  const lines: string[] = rawLines.map((l) => normalizeLine(l, sep));
+
+  // Make the active separators visible to formatNumber/formatUnit while we
+  // iterate. Cleared in `finally` below so an exception or premature return
+  // can't leave stale state for the next evaluation.
+  setActiveSeparators(sep);
 
   const scope: Record<string, unknown> = { ...SCOPE_FUNCTIONS };
   const results: LineResult[] = [];
@@ -543,195 +561,204 @@ export function evaluate(...text: [string[]] | string[]): LineResult[] {
   let prevValue: RunningValue | null = null;
   const runningValues: RunningValue[] = [];
 
-  for (const line of lines) {
-    // Skip empty lines and comments.
-    if (isEmpty(line) || COMMENT_RE.test(line)) {
-      results.push(emptyResult());
-      continue;
-    }
-
-    // Preprocess: capture trailing percent conversion, translate `as` into
-    // mathjs's `to` conversion keyword, and rewrite `sec`/`min` (which mathjs
-    // parses as the secant/minimum functions) to their full unit names when
-    // not followed by `(`. This lets users write "600 sec to min" naturally.
-    const pctMatch = line.match(PERCENT_CONVERT_RE);
-    const isPercentConvert = !!pctMatch;
-    const isTrailingPercent = !isPercentConvert && TRAILING_PERCENT_RE.test(line);
-    let processed = (pctMatch ? pctMatch[1] : line)
-      .replace(/\s+as\s+/g, " to ")
-      .replace(/\bsec\b(?!\s*\()/g, "seconds")
-      .replace(/\bmin\b(?!\s*\()/g, "minutes")
-      .replace(/\binfinity\b/gi, "Infinity")
-      // Lowercase any aggregate identifier (`Sum`, `AVG`, `Average`, ...) so
-      // mathjs's case-sensitive lookup hits the registered functions.
-      .replace(AGGREGATE_NAME_RE, (m) => m.toLowerCase());
-
-    // Inject `prev` so anything below that references it can resolve.
-    injectPrev(scope, prevValue);
-
-    // Bare aggregate (`sum` / `avg` / `median` / ...) — rewrite to a function
-    // call over the running values. `null` means there's nothing to aggregate
-    // yet, so emit a silent empty result instead of letting mathjs error.
-    const rewritten = rewriteBareAggregate(processed, scope, runningValues);
-    if (rewritten === null) {
-      results.push(emptyResult());
-      continue;
-    }
-    // Bare aggregate results don't feed back into the running values — `avg`
-    // after `sum` should average the inputs, not the inputs plus the sum.
-    const isBareAggregate = rewritten !== processed;
-    processed = rewritten;
-
-    // mathjs's `to` operator requires a Unit on the LHS — `150 to usd` errors
-    // because 150 is a plain number. If the LHS evaluates to a number and the
-    // RHS is a known unit, rewrite as a unit literal: `(150) usd`. Probing the
-    // LHS via math.evaluate is safe because the regex excludes assignments
-    // (those are handled separately upstream) and arithmetic evaluation has no
-    // side effects.
-    const unitApplyMatch = processed.match(UNIT_APPLY_RE);
-    if (unitApplyMatch && isUnitName(unitApplyMatch[2])) {
-      try {
-        const lhsValue = math.evaluate(unitApplyMatch[1], scope);
-        if (typeof lhsValue === "number") {
-          processed = `(${unitApplyMatch[1]}) ${unitApplyMatch[2]}`;
-        }
-      } catch {
-        // LHS doesn't evaluate cleanly — leave the original processed string;
-        // mathjs will surface its own error if the conversion is invalid.
-      }
-    }
-
-    // Guard variable assignment to built-in functions (e.g. sqrt = 5).
-    // Checking for "function" distinguishes functions (sqrt, sin…) from
-    // constants (pi, e…), which are allowed to be shadowed.
-    const isAssignment = ASSIGNMENT_RE.test(line);
-    if (isAssignment) {
-      const match = line.match(ASSIGNMENT_RE);
-      if (match && isBuiltinFunction(match[1])) {
-        results.push(errorResult(`Cannot assign to built-in function "${match[1]}"`));
-        continue;
-      }
-    }
-
-    const applyPercent = (r: LineResult): LineResult => {
-      if (r.value === null) {
-        return r;
-      }
-      if (isPercentConvert) {
-        // `0.5 as %` — promote the fractional value to a percent magnitude.
-        const pct = r.value * 100;
-        return { ...r, value: pct, display: `${formatNumber(pct)}%` };
-      }
-      if (isTrailingPercent) {
-        // `50%` — mathjs already divided by 100; keep the fractional value
-        // for downstream arithmetic but render the display as the original
-        // percent form.
-        const pct = r.value * 100;
-        return { ...r, display: `${formatNumber(pct)}%` };
-      }
-      return r;
-    };
-
-    try {
-      const node = math.parse(processed);
-
-      // Guard function assignment to built-in functions (e.g. sin(x) = x).
-      if (isFuncAssignNode(node) && isBuiltinFunction(node.name)) {
-        results.push(errorResult(`Cannot assign to built-in function "${node.name}"`));
+  try {
+    for (const line of lines) {
+      // Skip empty lines and comments.
+      if (isEmpty(line) || COMMENT_RE.test(line)) {
+        results.push(emptyResult());
         continue;
       }
 
-      // ── Calculus function calls ──
-      // Intercepted at the AST level so inline expressions (e.g. derivate(x^2))
-      // are handled symbolically instead of being evaluated first.
-      if (isCalculusFnCall(node) || (isAssignNode(node) && isCalculusFnCall(node.value))) {
+      // Preprocess: capture trailing percent conversion, translate `as` into
+      // mathjs's `to` conversion keyword, and rewrite `sec`/`min` (which mathjs
+      // parses as the secant/minimum functions) to their full unit names when
+      // not followed by `(`. This lets users write "600 sec to min" naturally.
+      const pctMatch = line.match(PERCENT_CONVERT_RE);
+      const isPercentConvert = !!pctMatch;
+      const isTrailingPercent = !isPercentConvert && TRAILING_PERCENT_RE.test(line);
+      let processed = (pctMatch ? pctMatch[1] : line)
+        .replace(/\s+as\s+/g, " to ")
+        .replace(/\bsec\b(?!\s*\()/g, "seconds")
+        .replace(/\bmin\b(?!\s*\()/g, "minutes")
+        .replace(/\binfinity\b/gi, "Infinity")
+        // Lowercase any aggregate identifier (`Sum`, `AVG`, `Average`, ...) so
+        // mathjs's case-sensitive lookup hits the registered functions.
+        .replace(AGGREGATE_NAME_RE, (m) => m.toLowerCase());
+
+      // Inject `prev` so anything below that references it can resolve.
+      injectPrev(scope, prevValue);
+
+      // Bare aggregate (`sum` / `avg` / `median` / ...) — rewrite to a function
+      // call over the running values. `null` means there's nothing to aggregate
+      // yet, so emit a silent empty result instead of letting mathjs error.
+      const rewritten = rewriteBareAggregate(processed, scope, runningValues);
+      if (rewritten === null) {
+        results.push(emptyResult());
+        continue;
+      }
+      // Bare aggregate results don't feed back into the running values — `avg`
+      // after `sum` should average the inputs, not the inputs plus the sum.
+      const isBareAggregate = rewritten !== processed;
+      processed = rewritten;
+
+      // mathjs's `to` operator requires a Unit on the LHS — `150 to usd` errors
+      // because 150 is a plain number. If the LHS evaluates to a number and the
+      // RHS is a known unit, rewrite as a unit literal: `(150) usd`. Probing the
+      // LHS via math.evaluate is safe because the regex excludes assignments
+      // (those are handled separately upstream) and arithmetic evaluation has no
+      // side effects.
+      const unitApplyMatch = processed.match(UNIT_APPLY_RE);
+      if (unitApplyMatch && isUnitName(unitApplyMatch[2])) {
         try {
-          let result: unknown;
-          let calcIsAssignment = false;
-          if (isAssignNode(node) && isCalculusFnCall(node.value)) {
-            if (RESERVED_ASSIGNMENT_NAMES.has(node.object.name)) {
-              results.push(errorResult(`Cannot assign to reserved name "${node.object.name}"`));
-              continue;
-            }
-            result = processCalculusCall(node.value, scope);
-            scope[node.object.name] = result;
-            calcIsAssignment = true;
-          } else {
-            result = processCalculusCall(node as FnCallNode, scope);
+          const lhsValue = math.evaluate(unitApplyMatch[1], scope);
+          if (typeof lhsValue === "number") {
+            processed = `(${unitApplyMatch[1]}) ${unitApplyMatch[2]}`;
           }
-          const lineResult = applyPercent(
-            mapResult(result, calcIsAssignment || isAssignment, false),
-          );
-          if (lineResult.value !== null && !isBareAggregate) {
-            const tracked: RunningValue = isUnit(result) ? result : lineResult.value;
-            prevValue = tracked;
-            runningValues.push(tracked);
-          }
-          results.push(lineResult);
-        } catch (e) {
-          results.push(errorResult(e instanceof Error ? e.message : String(e)));
+        } catch {
+          // LHS doesn't evaluate cleanly — leave the original processed string;
+          // mathjs will surface its own error if the conversion is invalid.
         }
-        continue;
       }
 
-      // Simplified function declaration: `name = expr` where expr has free
-      // variables. e.g. "func = x^2 + 5" creates a callable function with
-      // parameter x.
-      if (isAssignNode(node)) {
-        const freeVars = collectFreeVars(node.value, scope);
-        if (freeVars.length > 0) {
-          if (RESERVED_ASSIGNMENT_NAMES.has(node.object.name)) {
-            results.push(errorResult(`Cannot assign to reserved name "${node.object.name}"`));
-            continue;
-          }
-          const exprStr = node.value.toString();
-          scope[node.object.name] = createUserFunc(exprStr, freeVars, node.value.compile(), scope);
-          results.push({
-            value: null,
-            display: exprStr,
-            error: null,
-            isAssignment: true,
-          });
+      // Guard variable assignment to built-in functions (e.g. sqrt = 5).
+      // Checking for "function" distinguishes functions (sqrt, sin…) from
+      // constants (pi, e…), which are allowed to be shadowed.
+      const isAssignment = ASSIGNMENT_RE.test(line);
+      if (isAssignment) {
+        const match = line.match(ASSIGNMENT_RE);
+        if (match && isBuiltinFunction(match[1])) {
+          results.push(errorResult(`Cannot assign to built-in function "${match[1]}"`));
           continue;
         }
       }
 
-      const result = node.evaluate(scope);
+      const applyPercent = (r: LineResult): LineResult => {
+        if (r.value === null) {
+          return r;
+        }
+        if (isPercentConvert) {
+          // `0.5 as %` — promote the fractional value to a percent magnitude.
+          const pct = r.value * 100;
+          return { ...r, value: pct, display: `${formatNumber(pct)}%` };
+        }
+        if (isTrailingPercent) {
+          // `50%` — mathjs already divided by 100; keep the fractional value
+          // for downstream arithmetic but render the display as the original
+          // percent form.
+          const pct = r.value * 100;
+          return { ...r, display: `${formatNumber(pct)}%` };
+        }
+        return r;
+      };
 
-      // Attach UserFunc metadata to mathjs function assignments so they
-      // can be passed to derive/derivate/derivative later.
-      if (isFuncAssignNode(node) && typeof result === "function") {
-        const fn = result as unknown as Record<string, unknown>;
-        fn.__expr = fn.expr ?? "";
-        fn.__params = [...node.params];
-      }
+      try {
+        const node = math.parse(processed);
 
-      const lineResult = applyPercent(mapResult(result, isAssignment, isFuncAssignNode(node)));
+        // Guard function assignment to built-in functions (e.g. sin(x) = x).
+        if (isFuncAssignNode(node) && isBuiltinFunction(node.name)) {
+          results.push(errorResult(`Cannot assign to built-in function "${node.name}"`));
+          continue;
+        }
 
-      // Track results for prev / running aggregates. Prefer the raw mathjs
-      // result (so `Unit`s flow through), but fall back to the formatted
-      // `lineResult.value` when the result isn't a `Unit` — that path also
-      // preserves the percent-override magnitude (e.g. "0.5 as %" tracks 50,
-      // not 0.5). Bare aggregate lines don't contribute so chained calls
-      // (`sum` then `avg`) average the inputs, not the inputs plus the sum.
-      if (lineResult.value !== null && !isBareAggregate) {
-        const tracked: RunningValue = isUnit(result) ? result : lineResult.value;
-        prevValue = tracked;
-        runningValues.push(tracked);
-      }
+        // ── Calculus function calls ──
+        // Intercepted at the AST level so inline expressions (e.g. derivate(x^2))
+        // are handled symbolically instead of being evaluated first.
+        if (isCalculusFnCall(node) || (isAssignNode(node) && isCalculusFnCall(node.value))) {
+          try {
+            let result: unknown;
+            let calcIsAssignment = false;
+            if (isAssignNode(node) && isCalculusFnCall(node.value)) {
+              if (RESERVED_ASSIGNMENT_NAMES.has(node.object.name)) {
+                results.push(errorResult(`Cannot assign to reserved name "${node.object.name}"`));
+                continue;
+              }
+              result = processCalculusCall(node.value, scope);
+              scope[node.object.name] = result;
+              calcIsAssignment = true;
+            } else {
+              result = processCalculusCall(node as FnCallNode, scope);
+            }
+            const lineResult = applyPercent(
+              mapResult(result, calcIsAssignment || isAssignment, false),
+            );
+            if (lineResult.value !== null && !isBareAggregate) {
+              const tracked: RunningValue = isUnit(result) ? result : lineResult.value;
+              prevValue = tracked;
+              runningValues.push(tracked);
+            }
+            results.push(lineResult);
+          } catch (e) {
+            results.push(errorResult(e instanceof Error ? e.message : String(e)));
+          }
+          continue;
+        }
 
-      results.push(lineResult);
-    } catch (e) {
-      // Surface unit-related errors (mismatches, conversions). Parse errors
-      // from incomplete input and undefined-symbol errors stay silent so the
-      // user can keep typing without disruptive error states.
-      const msg = e instanceof Error ? e.message : String(e);
-      if (/unit/i.test(msg)) {
-        results.push(errorResult(msg));
-      } else {
-        results.push(emptyResult());
+        // Simplified function declaration: `name = expr` where expr has free
+        // variables. e.g. "func = x^2 + 5" creates a callable function with
+        // parameter x.
+        if (isAssignNode(node)) {
+          const freeVars = collectFreeVars(node.value, scope);
+          if (freeVars.length > 0) {
+            if (RESERVED_ASSIGNMENT_NAMES.has(node.object.name)) {
+              results.push(errorResult(`Cannot assign to reserved name "${node.object.name}"`));
+              continue;
+            }
+            const exprStr = node.value.toString();
+            scope[node.object.name] = createUserFunc(
+              exprStr,
+              freeVars,
+              node.value.compile(),
+              scope,
+            );
+            results.push({
+              value: null,
+              display: exprStr,
+              error: null,
+              isAssignment: true,
+            });
+            continue;
+          }
+        }
+
+        const result = node.evaluate(scope);
+
+        // Attach UserFunc metadata to mathjs function assignments so they
+        // can be passed to derive/derivate/derivative later.
+        if (isFuncAssignNode(node) && typeof result === "function") {
+          const fn = result as unknown as Record<string, unknown>;
+          fn.__expr = fn.expr ?? "";
+          fn.__params = [...node.params];
+        }
+
+        const lineResult = applyPercent(mapResult(result, isAssignment, isFuncAssignNode(node)));
+
+        // Track results for prev / running aggregates. Prefer the raw mathjs
+        // result (so `Unit`s flow through), but fall back to the formatted
+        // `lineResult.value` when the result isn't a `Unit` — that path also
+        // preserves the percent-override magnitude (e.g. "0.5 as %" tracks 50,
+        // not 0.5). Bare aggregate lines don't contribute so chained calls
+        // (`sum` then `avg`) average the inputs, not the inputs plus the sum.
+        if (lineResult.value !== null && !isBareAggregate) {
+          const tracked: RunningValue = isUnit(result) ? result : lineResult.value;
+          prevValue = tracked;
+          runningValues.push(tracked);
+        }
+
+        results.push(lineResult);
+      } catch (e) {
+        // Surface unit-related errors (mismatches, conversions). Parse errors
+        // from incomplete input and undefined-symbol errors stay silent so the
+        // user can keep typing without disruptive error states.
+        const msg = e instanceof Error ? e.message : String(e);
+        if (/unit/i.test(msg)) {
+          results.push(errorResult(msg));
+        } else {
+          results.push(emptyResult());
+        }
       }
     }
+  } finally {
+    setActiveSeparators(null);
   }
 
   return results;

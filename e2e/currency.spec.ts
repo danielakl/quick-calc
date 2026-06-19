@@ -55,8 +55,9 @@ test.describe("Currency feature", () => {
 
     await page.getByTestId("calc-input").fill("100 USD to EUR");
     const results = page.getByTestId("calc-results");
-    // 1 USD = 0.92 EUR (stub) → 100 USD = 92 EUR (rendered with the € symbol)
-    await expect(results.getByText(/^\s*92\s*€\s*$/)).toBeVisible();
+    // 1 USD = 0.92 EUR (stub) → 100 USD = 92 EUR. Currency rendered via Intl
+    // with EUR's home locale (de-DE) → number followed by `€`.
+    await expect(results.getByText("€92.00")).toBeVisible();
   });
 
   test("evaluates `150 as usd` (number → unit literal)", async ({ page }) => {
@@ -70,6 +71,7 @@ test.describe("Currency feature", () => {
 
     await page.getByTestId("calc-input").fill("150 as usd");
     const results = page.getByTestId("calc-results");
-    await expect(results.getByText(/^\s*150\s*\$\s*$/)).toBeVisible();
+    // USD home locale (en-US) → "$150.00".
+    await expect(results.getByText("$150.00")).toBeVisible();
   });
 });
