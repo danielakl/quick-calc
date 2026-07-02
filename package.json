@@ -59,7 +59,7 @@
     "eslint-plugin-import-x": "4.16.2",
     "husky": "9.1.7",
     "jsdom": "29.1.1",
-    "lint-staged": "17.0.7",
+    "lint-staged": "17.0.8",
     "postcss-load-config": "6.0.1",
     "prettier": "3.8.4",
     "tailwindcss": "4.3.1",
